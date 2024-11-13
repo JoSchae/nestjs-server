@@ -1,11 +1,12 @@
 services:
     app:
-        image: nestjs-api
+        image: johannesschaefer/nestjs-api
         build:
             context: .
             dockerfile: Dockerfile
-        platform: linux/arm/v7
-
+            x-bake:
+                platforms:
+                    - linux/amd64
         ports:
             - '3000:3000'
         environment:
@@ -15,9 +16,9 @@ services:
         depends_on:
             - mongo
         restart: always
+
     mongo:
         image: mongo:latest
-        platform: linux/arm/v7
         env_file:
             - .env
         environment:
@@ -25,27 +26,47 @@ services:
             MONGO_INITDB_ROOT_PASSWORD: ${MONGO_DB_PASSWORD}
         volumes:
             - mongodb_data:/data/db/
-            - mongodb-log:/var/log/mongodb/
+            - mongodb_log:/var/log/mongodb/
         ports:
             - '27017:27017'
         restart: always
+        healthcheck:
+            test: ['CMD', 'mongo', '--eval', "db.adminCommand('ping')"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
     nginx:
-        image: nginx:latest
-        platform: linux/arm/v7
+        image: johannesschaefer/nginx
+        build:
+            context: .
+            x-bake:
+                platforms:
+                    - linux/amd64
         ports:
+            - '443:443'
             - '80:80'
         volumes:
             - ./nginx.conf:/etc/nginx/nginx.conf
         depends_on:
             - app
-        links:
-            - app
         restart: always
+        env_file:
+            - .env
+    cloudflare-ddns:
+        image: oznu/cloudflare-ddns:latest
+        restart: always
+        environment:
+            - API_KEY=W0qI1iFbmD1bx-n_nN0v00oVMmgW0tMayZONfRqD
+            - ZONE=schaeferdevelopment.tech
+            - PROXIED=true
+            - PUID=1000
+            - PGID=1000
 
 volumes:
     mongodb_data:
         driver: local
-        name: mongo-data
-    mongodb-log:
+        name: mongodb-data
+    mongodb_log:
         driver: local
-        name: mongo-log
+        name: mongodb-log

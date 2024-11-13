@@ -11,7 +11,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 @Module({
 	imports: [
 		ConfigModule.forRoot({
-			envFilePath: ['.development.env'],
+			envFilePath: ['.env'],
 			isGlobal: true,
 		}),
 		EventsModule,
