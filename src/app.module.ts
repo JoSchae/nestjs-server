@@ -7,6 +7,8 @@ import { StudentSchema } from './schema/student.schema';
 import { StudentService } from './student/student.service';
 import { StudentController } from './student/student.controller';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
 	imports: [
@@ -23,6 +25,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 			inject: [ConfigService],
 		}),
 		MongooseModule.forFeature([{ name: 'Student', schema: StudentSchema }]),
+		AuthModule,
+		UsersModule,
 	],
 	controllers: [AppController, StudentController],
 	providers: [AppService, StudentService],
