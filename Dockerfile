@@ -4,11 +4,13 @@ FROM node:18.19.1-alpine AS builder
 # Set the working directory
 WORKDIR /app
 
+RUN npm i -g @nestjs/cli
+
 # Copy package.json and package-lock.json
-COPY yarn.lock package.json ./
+COPY package.json package-lock.json ./
 
 # Install dependencies
-RUN yarn install --verbose
+RUN npm install --verbose
 
 # Copy the rest of the application source code
 COPY . .
@@ -22,11 +24,13 @@ FROM node:18.19.1-alpine
 # Set the working directory
 WORKDIR /app
 
+RUN npm i -g @nestjs/cli
+
 # Copy package.json and package-lock.json
-COPY yarn.lock package.json ./
+COPY package.json package-lock.json ./
 
 # Install only production dependencies
-RUN yarn install --production --verbose
+RUN npm i --production --verbose
 
 # Copy the build files from the builder stage
 COPY --from=builder /app/dist ./dist

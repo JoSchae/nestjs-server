@@ -1,26 +1,26 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Controller, Post, Logger, Request, UseGuards, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { Public } from './public-strategy';
-import { BaseUser } from 'src/dto/base-user.dto';
+import { LocalAuthGuard } from './local-auth.guard';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
-// @ApiTags('auth')
 export class AuthController {
+	private readonly logger: Logger = new Logger(AuthController.name);
 	constructor(private readonly authService: AuthService) {}
 
-	@Public()
-	@HttpCode(HttpStatus.OK)
 	@Post('login')
-	@ApiOperation({ summary: 'User Login' })
-	@ApiResponse({ status: HttpStatus.OK, description: 'User logged in successfully', type: [BaseUser] })
-	signUp(@Body() signUpDto: Record<string, any>) {
-		const payload = {
-			username: signUpDto.username,
-			email: signUpDto.email,
-			password: signUpDto.password,
-			createdAt: new Date(),
-		};
-		return this.authService.signUp(payload);
+	@UseGuards(LocalAuthGuard)
+	async login(@Request() req): Promise<any> {
+		try {
+			return await this.authService.generateJwtToken(req.user);
+		} catch (error) {
+			throw error;
+		}
+	}
+
+	@UseGuards(JwtAuthGuard)
+	@Get('viewProfile')
+	async getUser(@Request() req): Promise<any> {
+		return req.user;
 	}
 }

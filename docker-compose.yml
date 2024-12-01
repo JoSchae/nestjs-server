@@ -70,3 +70,7 @@ volumes:
     mongodb_log:
         driver: local
         name: mongodb-log
+
+networks:
+    app-network:
+        driver: bridge
