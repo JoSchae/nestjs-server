@@ -1,39 +1,4 @@
 services:
-    app:
-        build:
-            context: .
-            dockerfile: Dockerfile
-        volumes:
-            - .:/app
-            - /app/node_modules
-        command: npm run start:debug
+    nestjs:
         environment:
-            MONGO_INITDB_ROOT_USERNAME: ${MONGO_DB_USER}
-            MONGO_INITDB_ROOT_PASSWORD: ${MONGO_DB_PASSWORD}
-            MONGO_DB_HOST: mongo
-            MONGO_DB_PORT: 27017
-        ports:
-            - '3000:3000'
-            - '9229:9229'
-        depends_on:
-            - mongo
-
-    mongo:
-        image: mongo
-        ports:
-            - '27017:27017'
-        volumes:
-            - mongodb_data:/data/db
-            - mongodb_log:/var/log/mongodb
-        networks:
-            - app-network
-
-volumes:
-    mongodb_data:
-        driver: local
-    mongodb_log:
-        driver: local
-
-networks:
-    app-network:
-        driver: bridge
+            - NODE_ENV=dev
