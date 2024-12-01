@@ -3,6 +3,8 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
+const PORT = parseInt(process.env.SERVER_PORT, 10) || 3000;
+
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule);
 	// setup OpenApi
@@ -16,6 +18,6 @@ async function bootstrap() {
 	SwaggerModule.setup('api', app, documentFactory);
 
 	app.useGlobalPipes(new ValidationPipe());
-	await app.listen(3000);
+	await app.listen(PORT);
 }
 bootstrap();

@@ -1,42 +1,28 @@
-# Use the official Node.js 20-alpine image as the base image
 FROM node:18.19.1-alpine AS builder
 
-# Set the working directory
-WORKDIR /app
+WORKDIR /usr/src/app
 
-RUN npm i -g @nestjs/cli
+COPY package*.json ./
 
-# Copy package.json and package-lock.json
-COPY package.json package-lock.json ./
+RUN npm install
 
-# Install dependencies
-RUN npm install --verbose
-
-# Copy the rest of the application source code
 COPY . .
 
-# Build the application
 RUN npm run build
 
-# Use a smaller base image for the production build
 FROM node:18.19.1-alpine
 
-# Set the working directory
-WORKDIR /app
+ARG NODE_ENV=dev
+ENV NODE_ENV=${NODE_ENV}
 
-RUN npm i -g @nestjs/cli
+WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json
-COPY package.json package-lock.json ./
+COPY package*.json ./
 
-# Install only production dependencies
-RUN npm i --production --verbose
+RUN npm install --only=production
 
-# Copy the build files from the builder stage
-COPY --from=builder /app/dist ./dist
+COPY . .
 
-# Expose port 3000
-EXPOSE 3000
+COPY --from=builder /usr/src/app/dist ./dist
 
-# Start the application
 CMD ["node", "dist/main"]
