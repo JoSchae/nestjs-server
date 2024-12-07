@@ -3,18 +3,20 @@ services:
         build:
             context: .
             target: builder
+            dockerfile: Dockerfile
+        container_name: nestjs
         ports:
             - 3000:3000
             - 9229:9229
         command: npm run start:debug
-        environment:
-            - NODE_ENV=production
-            - SERVER_PORT=3000
-            - MONGO_DB_PORT=27017
-            - MONGO_DB_USERNAME=admin
-            - MONGO_DB_PASSWORD=acht56sieben
-            - MONGO_DB_HOSTNAME=mongodb
-            - MONGO_DB_DATABASE=mongo
+        # environment:
+        #     - NODE_ENV=production
+        #     - SERVER_PORT=3000
+        #     - MONGO_DB_PORT=27017
+        #     - MONGO_DB_USERNAME=admin
+        #     - MONGO_DB_PASSWORD=password
+        #     - MONGO_DB_HOSTNAME=mongodb
+        #     - MONGO_DB_DATABASE=mongodb
         env_file:
             - .env
         depends_on:
@@ -25,11 +27,17 @@ services:
 
     mongodb:
         image: mongo:latest
+        container_name: mongodb
         env_file:
             - .env
+        environment:
+            - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME} # only for auth against admin database
+            - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD} # only for auth against admin database
+            - MONGO_INITDB_DATABASE=${MONGO_DB_DATABASE} # the databse that will run the init scripts
         volumes:
             - mongodb_data:/data/db/
             - mongodb_log:/var/log/mongodb/
+            - ./mongo/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
         ports:
             - '27017:27017'
         restart: always
@@ -69,11 +77,13 @@ services:
             - PROXIED=true
             - PUID=1000
             - PGID=1000
-
+        networks:
+            - app-network
 volumes:
     mongodb_data:
         driver: local
         name: mongodb-data
+
     mongodb_log:
         driver: local
         name: mongodb-log
@@ -81,3 +91,5 @@ volumes:
 networks:
     app-network:
         driver: bridge
+        attachable: true
+        name: app-network
