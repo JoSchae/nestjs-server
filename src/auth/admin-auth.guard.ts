@@ -1,38 +1,41 @@
 import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { AuthGuard } from '@nestjs/passport';
-import { IS_PUBLIC_KEY } from './skipAuth.decorator';
-import { jwtConstants } from './constants';
+import { UserService } from 'src/user/user.service';
 import { extractTokenFromHeader } from 'src/utils/request.util';
+import { jwtConstants } from './constants';
+import { AuthGuard } from '@nestjs/passport';
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {
+export class AdminAuthGuard extends AuthGuard('admin') {
 	constructor(
 		private jwtService: JwtService,
-		private reflector: Reflector,
+		private userService: UserService,
 	) {
 		super();
 	}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
-		const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-			context.getHandler(),
-			context.getClass(),
-		]);
-		if (isPublic) {
-			return true;
-		}
-
 		const request = context.switchToHttp().getRequest();
 		const token = extractTokenFromHeader(request);
 		if (!token) {
 			throw new UnauthorizedException();
 		}
+
 		try {
+			// Fetch the specific user (e.g., admin user)
+			const adminUser = await this.userService.findOneByEmail({ email: 'admin@admin.com' });
+			if (!adminUser) {
+				throw new UnauthorizedException('Admin user not found');
+			}
+
+			// Verify the token using the admin user's password
 			const payload = await this.jwtService.verifyAsync(token, {
 				secret: jwtConstants.secret,
 			});
+			console.log('Payload: ', payload);
+			if (payload.email !== adminUser.email) {
+				throw new UnauthorizedException('Unauthorized access');
+			}
 			request['user'] = payload;
 		} catch (error) {
 			throw new UnauthorizedException(error.message);
