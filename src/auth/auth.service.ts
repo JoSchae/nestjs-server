@@ -2,19 +2,20 @@ import { Injectable, forwardRef, Inject, UnauthorizedException, NotFoundExceptio
 import * as bcrypt from 'bcrypt';
 
 import { JwtService } from '@nestjs/jwt';
-import { UsersService } from 'src/users/users.service';
+import { UserService } from 'src/user/user.service';
+import { User } from 'src/models/user.model';
 
 @Injectable()
 export class AuthService {
 	constructor(
-		@Inject(forwardRef(() => UsersService))
-		private UsersService: UsersService,
+		@Inject(forwardRef(() => UserService))
+		private userService: UserService,
 		private jwtService: JwtService,
 	) {}
 
 	async validateUser(email: string, pass: string): Promise<any> {
 		const query = { email: email };
-		const user = await this.UsersService.findOneByEmail(query);
+		const user = await this.userService.findOneByEmail(query);
 		if (!user) {
 			throw new NotFoundException('Email Does not exist');
 		}
@@ -25,7 +26,7 @@ export class AuthService {
 		return user;
 	}
 
-	async generateJwtToken(user: any) {
+	async generateJwtToken(user: User): Promise<any> {
 		const payload = {
 			email: user.email,
 		};
