@@ -2,8 +2,8 @@ import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/com
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from 'src/user/user.service';
 import { extractTokenFromHeader } from 'src/utils/request.util';
-import { jwtConstants } from './constants';
 import { AuthGuard } from '@nestjs/passport';
+import { jwtConstants } from './constants';
 
 @Injectable()
 export class AdminAuthGuard extends AuthGuard('admin') {

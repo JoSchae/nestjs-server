@@ -1,8 +1,9 @@
-import { Controller, Post, Logger, Request, UseGuards, Get } from '@nestjs/common';
+import { Controller, Post, Logger, UseGuards, Body } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LocalAuthGuard } from './local-auth.guard';
-import { JwtAuthGuard } from './jwt-auth.guard';
-import { SkipAuth } from './skipAuth.decorator';
+import { SkipAuth } from './guards/skipAuth.decorator';
+import { LocalAuthGuard } from './guards/local-auth.guard';
+import { ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { UserLoginDto } from 'src/user/model/user-login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -12,10 +13,15 @@ export class AuthController {
 	@Post('login')
 	@SkipAuth()
 	@UseGuards(LocalAuthGuard)
-	async login(@Request() req): Promise<any> {
+	@ApiOperation({ summary: 'Login with credentials and get a JWT' })
+	@ApiBody({ description: 'User data', type: UserLoginDto })
+	@ApiResponse({ status: 201, description: 'The user is logged in and JWT was created.' })
+	@ApiResponse({ status: 401, description: 'Invalid Password' })
+	@ApiResponse({ status: 404, description: "User email doesn't exist." })
+	@ApiResponse({ status: 500, description: 'Internal server error.' })
+	public async login(@Body() userLoginDto: UserLoginDto): Promise<any> {
 		try {
-			console.log('req.user', req.user);
-			return await this.authService.generateJwtToken(req.user);
+			return await this.authService.generateJwtToken(userLoginDto);
 		} catch (error) {
 			throw error;
 		}
