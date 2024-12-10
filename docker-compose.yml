@@ -29,7 +29,7 @@ services:
         volumes:
             - mongodb_data:/data/db/
             - mongodb_log:/var/log/mongodb/
-            # - ./mongo/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
+            - ./mongo/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
         ports:
             - '27017:27017'
         restart: always
