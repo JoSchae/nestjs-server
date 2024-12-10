@@ -3,7 +3,8 @@ import * as bcrypt from 'bcrypt';
 
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from 'src/user/user.service';
-import { User } from 'src/models/user.model';
+import { User } from 'src/user/model/user.model';
+import { UserLoginDto } from 'src/user/model/user-login.dto';
 
 @Injectable()
 export class AuthService {
@@ -13,7 +14,7 @@ export class AuthService {
 		private jwtService: JwtService,
 	) {}
 
-	async validateUser(email: string, pass: string): Promise<any> {
+	public async validateUser(email: string, pass: string): Promise<any> {
 		const query = { email: email };
 		const user = await this.userService.findOneByEmail(query);
 		if (!user) {
@@ -26,7 +27,7 @@ export class AuthService {
 		return user;
 	}
 
-	async generateJwtToken(user: User): Promise<any> {
+	public async generateJwtToken(user: UserLoginDto): Promise<any> {
 		const payload = {
 			email: user.email,
 		};
@@ -35,7 +36,7 @@ export class AuthService {
 		};
 	}
 
-	async getHashedPassword(password: string): Promise<any> {
+	public async getHashedPassword(password: string): Promise<any> {
 		return new Promise((resolve, reject) => {
 			bcrypt.hash(password, 10, (err, hash) => {
 				if (err) {
@@ -46,7 +47,7 @@ export class AuthService {
 		});
 	}
 
-	async comparePasswords(password: string, hashedPassword: string): Promise<any> {
+	private async comparePasswords(password: string, hashedPassword: string): Promise<any> {
 		return bcrypt
 			.compare(password, hashedPassword)
 			.then((isMatch: boolean) => {

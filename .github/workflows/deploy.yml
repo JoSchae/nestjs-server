@@ -20,4 +20,4 @@ jobs:
           echo "MONGO_DB_DATABASE=${{ secrets.MONGO_DB_DATABASE }}" >> .env
 
       - name: Deploy with Docker Compose
-        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+        run: docker compose -f docker-compose.yml up --build

@@ -9,14 +9,6 @@ services:
             - 3000:3000
             - 9229:9229
         command: npm run start:debug
-        # environment:
-        #     - NODE_ENV=production
-        #     - SERVER_PORT=3000
-        #     - MONGO_DB_PORT=27017
-        #     - MONGO_DB_USERNAME=admin
-        #     - MONGO_DB_PASSWORD=password
-        #     - MONGO_DB_HOSTNAME=mongodb
-        #     - MONGO_DB_DATABASE=mongodb
         env_file:
             - .env
         depends_on:
@@ -37,7 +29,7 @@ services:
         volumes:
             - mongodb_data:/data/db/
             - mongodb_log:/var/log/mongodb/
-            - ./mongo/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
+            # - ./mongo/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
         ports:
             - '27017:27017'
         restart: always
@@ -50,12 +42,7 @@ services:
             - app-network
 
     nginx:
-        image: johannesschaefer/nginx
-        build:
-            context: .
-            x-bake:
-                platforms:
-                    - linux/amd64
+        image: nginx:latest
         ports:
             - '443:443'
             - '80:80'

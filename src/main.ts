@@ -13,7 +13,6 @@ async function bootstrap() {
 		.setDescription('API for SchaeferDevelopment')
 		.setVersion('1.0')
 		.addTag('SchaeferDevelopment')
-		.addBasicAuth()
 		.addBearerAuth()
 		.build();
 	const documentFactory = () => SwaggerModule.createDocument(app, config);

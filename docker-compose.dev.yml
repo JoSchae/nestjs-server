@@ -2,3 +2,11 @@ services:
     nestjs:
         environment:
             - NODE_ENV=dev
+        env_file:
+            - .dev.env
+    mongodb:
+        env_file:
+            - .dev.env
+    nginx:
+        env_file:
+            - .dev.env
