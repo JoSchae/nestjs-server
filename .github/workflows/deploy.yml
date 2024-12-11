@@ -13,11 +13,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Create .env file
-        run: |
-          echo "MONGO_DB_USERNAME=${{ secrets.MONGO_DB_USERNAME }}" >> .env
-          echo "MONGO_DB_PASSWORD=${{ secrets.MONGO_DB_PASSWORD }}" >> .env
-          echo "MONGO_DB_DATABASE=${{ secrets.MONGO_DB_DATABASE }}" >> .env
+    #   - name: Create .env file
+    #     run: |
+    #       echo "MONGO_DB_USERNAME=${{ secrets.MONGO_DB_USERNAME }}" >> .env
+    #       echo "MONGO_DB_PASSWORD=${{ secrets.MONGO_DB_PASSWORD }}" >> .env
+    #       echo "MONGO_DB_DATABASE=${{ secrets.MONGO_DB_DATABASE }}" >> .env
 
       - name: Deploy with Docker Compose
         run: docker compose -f docker-compose.yml up --build
