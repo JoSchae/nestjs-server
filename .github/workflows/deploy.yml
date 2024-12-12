@@ -28,7 +28,7 @@ jobs:
               run: |
                   export TAG=dev
                   export CLOUDFLARE_APIKEY=${{ secrets.CLOUDFLARE_APIKEY }}
-                  docker compose -f docker-compose.yml -f docker-compose.dev.yml --no-cache and --push build
+                  docker compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache and --push
     build-main:
         if: github.ref == 'refs/heads/main'
         runs-on: ubuntu-latest
@@ -50,4 +50,4 @@ jobs:
               run: |
                   export TAG=latest
                   export CLOUDFLARE_APIKEY=${{ secrets.CLOUDFLARE_APIKEY }}
-                  docker compose -f docker-compose.yml -f docker-compose.dev.yml --no-cache and --push build
+                  docker compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache and --push
