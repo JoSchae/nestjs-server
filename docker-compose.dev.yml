@@ -1,28 +1,9 @@
 services:
     nestjs:
         image: johannesschaefer/nestjs:${TAG}
-        build:
-            context: ./nestjs
-            dockerfile: Dockerfile
-        container_name: nestjs
-
     mongodb:
         image: johannesschaefer/mongo:${TAG}
-        build:
-            context: ./mongodb
-            dockerfile: Dockerfile
-        container_name: mongodb
-
     nginx:
         image: johannesschaefer/nginx:${TAG}
-        build:
-            context: ./nginx
-            dockerfile: Dockerfile
-        container_name: nginx
-
     cloudflare-ddns:
         image: johannesschaefer/cloudflare-ddns:${TAG}
-        build:
-            context: ./cloudflare-ddns
-            dockerfile: Dockerfile
-        container_name: cloudflare-ddns
