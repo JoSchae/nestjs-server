@@ -2,7 +2,7 @@ FROM node:18.19.1-alpine AS builder
 
 WORKDIR /usr/src/app
 
-COPY package*.json ./
+COPY ../../package*.json ./
 
 RUN npm install
 
@@ -17,11 +17,11 @@ ENV NODE_ENV=${NODE_ENV}
 
 WORKDIR /usr/src/app
 
-COPY package*.json ./
+COPY ../../package*.json ./
 
 RUN npm install --only=production
 
-COPY . .
+COPY ../../. .
 
 COPY --from=builder /usr/src/app/dist ./dist
 
