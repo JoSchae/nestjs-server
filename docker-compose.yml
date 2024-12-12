@@ -1,6 +1,5 @@
 services:
     nestjs:
-        image: nestjs:latest
         build:
             context: .
             target: builder

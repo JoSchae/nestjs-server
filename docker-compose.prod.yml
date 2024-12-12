@@ -1,6 +1,5 @@
 services:
     nestjs:
-        image: johannesschaefer/nestjs:latest
         ports:
             - 3000:3000
             - 9229:9229
@@ -12,7 +11,6 @@ services:
             - app-network
 
     mongodb:
-        image: johannesschaefer/mongo:latest
         volumes:
             - mongodb_data:/data/db/
             - mongodb_log:/var/log/mongodb/
@@ -29,7 +27,6 @@ services:
             - app-network
 
     nginx:
-        image: johannesschaefer/nginx:latest
         ports:
             - '443:443'
             - '80:80'
@@ -41,7 +38,6 @@ services:
         networks:
             - app-network
     cloudflare-ddns:
-        image: johannesschaefer/cloudflare-ddns:latest
         restart: always
         networks:
             - app-network
