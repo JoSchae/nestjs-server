@@ -1,12 +1,9 @@
 services:
     nestjs:
         image: johannesschaefer/nestjs:${TAG}
-
     mongodb:
         image: johannesschaefer/mongo:${TAG}
-
     nginx:
         image: johannesschaefer/nginx:${TAG}
-
     cloudflare-ddns:
         image: johannesschaefer/cloudflare-ddns:${TAG}
