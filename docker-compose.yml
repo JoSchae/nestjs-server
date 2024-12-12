@@ -1,11 +1,6 @@
 services:
     nestjs:
-        build:
-            context: .
-            target: builder
-            dockerfile: Dockerfile
-            tags:
-                - johannesschaefer/nestjs:latest
+        image: johannesschaefer/nestjs:latest
         container_name: nestjs
         ports:
             - 3000:3000
@@ -20,10 +15,7 @@ services:
             - app-network
 
     mongodb:
-        image: mongo:latest
-        build:
-            tags:
-                - johannesschaefer/mongo:latest
+        image: johannesschaefer/mongo:latest
         container_name: mongodb
         env_file:
             - .env
@@ -47,10 +39,7 @@ services:
             - app-network
 
     nginx:
-        image: nginx:latest
-        build:
-            tags:
-                - johannesschaefer/nginx:latest
+        image: johannesschaefer/nginx:latest
         ports:
             - '443:443'
             - '80:80'
@@ -64,10 +53,7 @@ services:
         networks:
             - app-network
     cloudflare-ddns:
-        image: oznu/cloudflare-ddns:latest
-        build:
-            tags:
-                - johannesschaefer/cloudflare-ddns:latest
+        image: johannesschaefer/cloudflare-ddns:latest
         restart: always
         environment:
             - API_KEY=${CLOUDFLARE_APIKEY}
