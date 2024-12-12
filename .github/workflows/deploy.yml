@@ -27,6 +27,7 @@ jobs:
     - name: Build and push Docker images for dev
       run: |
         export TAG=dev
+        export CLOUDFLARE_APIKEY=${{ secrets.CLOUDFLARE_APIKEY }}
         docker compose -f docker-compose.yml build
         docker compose -f docker-compose.yml push
   build-main:
@@ -49,5 +50,6 @@ jobs:
     - name: Build and push Docker images
       run: |
         export TAG=latest
+        export CLOUDFLARE_APIKEY=${{ secrets.CLOUDFLARE_APIKEY }}
         docker compose -f docker-compose.yml build
         docker compose -f docker-compose.yml push
