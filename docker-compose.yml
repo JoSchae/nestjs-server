@@ -2,8 +2,8 @@ services:
     nestjs:
         image: johannesschaefer/nestjs:latest
         build:
-            context: ./dockerfiles/nestjs
-            dockerfile: Dockerfile
+            context: .
+            dockerfile: ./dockerfiles/nestjs/Dockerfile
         container_name: nestjs
         ports:
             - 3000:3000
@@ -20,8 +20,8 @@ services:
     mongodb:
         image: johannesschaefer/mongo:latest
         build:
-            context: ./dockerfiles/mongodb
-            dockerfile: Dockerfile
+            context: .
+            dockerfile: ./dockerfiles/mongodb/Dockerfile
         container_name: mongodb
         env_file:
             - .env
@@ -47,8 +47,8 @@ services:
     nginx:
         image: johannesschaefer/nginx:latest
         build:
-            context: ./dockerfiles/nginx
-            dockerfile: Dockerfile
+            context: .
+            dockerfile: ./dockerfiles/nginx/Dockerfile
         container_name: nginx
         ports:
             - '443:443'
@@ -65,8 +65,8 @@ services:
     cloudflare-ddns:
         image: johannesschaefer/cloudflare-ddns:latest
         build:
-            context: ./dockerfiles/cloudflare-ddns
-            dockerfile: Dockerfile
+            context: .
+            dockerfile: ./dockerfiles/cloudflare-ddns/Dockerfile
         container_name: cloudflare-ddns
         restart: always
         environment:
