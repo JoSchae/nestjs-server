@@ -1,95 +1,10 @@
 services:
     nestjs:
         image: johannesschaefer/nestjs:prod
-        build:
-            context: .
-            dockerfile: ./dockerfiles/nestjs/Dockerfile
-        container_name: nestjs
-        ports:
-            - 3000:3000
-            - 9229:9229
-        command: npm run start:debug
-        env_file:
-            - .env
-        depends_on:
-            - mongodb
-        restart: always
-        networks:
-            - app-network
 
     mongodb:
         image: johannesschaefer/mongo:prod
-        build:
-            context: .
-            dockerfile: ./dockerfiles/mongodb/Dockerfile
-        container_name: mongodb
-        env_file:
-            - .env
-        environment:
-            - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME} # only for auth against admin database
-            - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD} # only for auth against admin database
-            - MONGO_INITDB_DATABASE=${MONGO_DB_DATABASE} # the databse that will run the init scripts
-        volumes:
-            - mongodb_data:/data/db/
-            - mongodb_log:/var/log/mongodb/
-            - ./mongo/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
-        ports:
-            - '27017:27017'
-        restart: always
-        healthcheck:
-            test: ['CMD', 'mongo', '--eval', "db.adminCommand('ping')"]
-            interval: 10s
-            timeout: 5s
-            retries: 5
-        networks:
-            - app-network
-
     nginx:
         image: johannesschaefer/nginx:prod
-        build:
-            context: .
-            dockerfile: ./dockerfiles/nginx/Dockerfile
-        container_name: nginx
-        ports:
-            - '443:443'
-            - '80:80'
-        volumes:
-            - ./nginx.conf:/etc/nginx/nginx.conf
-        depends_on:
-            - nestjs
-        restart: always
-        env_file:
-            - .env
-        networks:
-            - app-network
     cloudflare-ddns:
         image: johannesschaefer/cloudflare-ddns:prod
-        build:
-            context: .
-            dockerfile: ./dockerfiles/cloudflare-ddns/Dockerfile
-        container_name: cloudflare-ddns
-        restart: always
-        env_file:
-            - .env
-        environment:
-            - API_KEY=${API_KEY}
-            - ZONE=schaeferdevelopment.tech
-            - PROXIED=true
-            - PUID=1000
-            - PGID=1000
-        networks:
-            - app-network
-volumes:
-    mongodb_data:
-        driver: local
-        name: mongodb-data
-
-    mongodb_log:
-        driver: local
-        name: mongodb-log
-
-networks:
-    app-network:
-        driver: bridge
-        attachable: true
-        name: app-network
