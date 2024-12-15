@@ -1,6 +1,8 @@
 services:
     nestjs:
         image: johannesschaefer/nestjs:prod
+        environment:
+            - NODE_ENV=prod
     mongodb:
         image: johannesschaefer/mongo:prod
     nginx:

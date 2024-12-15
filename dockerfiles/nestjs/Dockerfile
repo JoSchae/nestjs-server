@@ -6,7 +6,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 
 # Install all dependencies including dev
-RUN npm install
+RUN npm install -g @nestjs/cli && npm install
 
 # Copy rest of the code
 COPY . .
@@ -26,7 +26,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 
 # Install only production dependencies
-RUN npm install --omit=dev
+RUN npm install -g @nestjs/cli && npm install --omit=dev
 
 # Copy built application
 COPY --from=builder /usr/src/app/dist ./dist
