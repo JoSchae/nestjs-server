@@ -1,6 +1,6 @@
 services:
     nestjs:
-        image: johannesschaefer/nestjs:latest
+        image: johannesschaefer/nestjs:${TAG}
         build:
             context: .
             dockerfile: ./dockerfiles/nestjs/Dockerfile
@@ -18,7 +18,7 @@ services:
             - app-network
 
     mongodb:
-        image: johannesschaefer/mongo:latest
+        image: johannesschaefer/mongo:${TAG}
         build:
             context: .
             dockerfile: ./dockerfiles/mongodb/Dockerfile
@@ -45,7 +45,7 @@ services:
             - app-network
 
     nginx:
-        image: johannesschaefer/nginx:latest
+        image: johannesschaefer/nginx:${TAG}
         build:
             context: .
             dockerfile: ./dockerfiles/nginx/Dockerfile
@@ -63,7 +63,7 @@ services:
         networks:
             - app-network
     cloudflare-ddns:
-        image: johannesschaefer/cloudflare-ddns:latest
+        image: johannesschaefer/cloudflare-ddns:${TAG}
         build:
             context: .
             dockerfile: ./dockerfiles/cloudflare-ddns/Dockerfile

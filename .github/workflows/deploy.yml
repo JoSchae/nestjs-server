@@ -52,7 +52,7 @@ jobs:
             - name: Build and push Docker images for main
               env:
                   CLOUDFLARE_APIKEY: ${{ secrets.CLOUDFLARE_APIKEY }}
-                  TAG: latest
+                  TAG: prod
               run: |
                   docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache
                   docker compose -f docker-compose.yml -f docker-compose.prod.yml push
