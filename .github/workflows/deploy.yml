@@ -26,7 +26,7 @@ jobs:
             - name: Generate environment file
               run: |
                   cat << EOF > .env
-                  NODE_ENV=${TAG:-development}
+                  NODE_ENV=${TAG:-dev}
                   SERVER_PORT=3000
                   MONGO_DB_PORT=27017
                   MONGO_DB_USERNAME=${{ secrets.MONGO_DB_USERNAME }}
@@ -47,12 +47,12 @@ jobs:
             - name: Build and push Docker images
               env:
                   CLOUDFLARE_APIKEY: ${{ secrets.CLOUDFLARE_APIKEY }}
-                  NODE_ENV: ${TAG:-development}
+                  NODE_ENV: ${TAG:-dev}
               run: |
                   if [ "${{ github.ref }}" = "refs/heads/main" ]; then
                     docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache --build-arg NODE_ENV=production
                     docker compose -f docker-compose.yml -f docker-compose.prod.yml push
                   else
-                    docker compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache --build-arg NODE_ENV=development
+                    docker compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache --build-arg NODE_ENV=dev
                     docker compose -f docker-compose.yml -f docker-compose.dev.yml push
                   fi
