@@ -53,28 +53,11 @@ services:
                 - NODE_ENV=dev
         container_name: nginx
         ports:
-            - '80:80'
+            - '127.0.0.1:80:80'
         depends_on:
             - nestjs
         volumes:
             - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
-        networks:
-            - app-network
-
-    cloudflare-ddns:
-        image: johannesschaefer/cloudflare-ddns:${TAG:-dev}
-        build:
-            context: .
-            dockerfile: ./dockerfiles/cloudflare-ddns/Dockerfile
-            args:
-                - CLOUDFLARE_APIKEY=${CLOUDFLARE_APIKEY}
-        container_name: cloudflare-ddns
-        restart: always
-        environment:
-            - ZONE=schaeferdevelopment.tech
-            - PROXIED=true
-            - PUID=1000
-            - PGID=1000
         networks:
             - app-network
 
