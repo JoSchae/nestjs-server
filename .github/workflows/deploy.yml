@@ -50,7 +50,7 @@ jobs:
                   NODE_ENV: ${TAG:-dev}
               run: |
                   if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-                    docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache --build-arg NODE_ENV=production
+                    docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache --build-arg NODE_ENV=prod
                     docker compose -f docker-compose.yml -f docker-compose.prod.yml push
                   else
                     docker compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache --build-arg NODE_ENV=dev
