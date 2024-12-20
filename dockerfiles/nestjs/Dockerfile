@@ -1,34 +1,33 @@
+# Build stage
 FROM node:18.19.1-alpine AS builder
 
 WORKDIR /usr/src/app
 
-# Copy package files first
 COPY package*.json ./
+RUN npm install -g @nestjs/cli && npm ci
 
-# Install all dependencies including dev
-RUN npm install -g @nestjs/cli && npm install
-
-# Copy rest of the code
 COPY . .
-
-# Build the application
 RUN npm run build
 
-# Start new stage for production
-FROM node:18.19.1-alpine
-
-ARG NODE_ENV=dev
-ENV NODE_ENV=${NODE_ENV}
+# Development stage
+FROM node:18.19.1-alpine AS development
 
 WORKDIR /usr/src/app
 
-# Copy package files
 COPY package*.json ./
+RUN npm install -g @nestjs/cli && npm ci
 
-# Install only production dependencies
-RUN npm install -g @nestjs/cli && npm install --omit=dev
+COPY . .
 
-# Copy built application
+# Production stage
+FROM node:18.19.1-alpine AS production
+
+WORKDIR /usr/src/app
+
+COPY package*.json ./
+RUN npm ci --only=production
+
 COPY --from=builder /usr/src/app/dist ./dist
 
-CMD ["node", "dist/main"]
+USER node
+CMD ["npm", "run", "start:prod"]

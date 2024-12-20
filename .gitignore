@@ -42,6 +42,10 @@ lerna-debug.log*
 # .env.production.local
 # .env.local
 
+# secrets
+/secrets/*
+!/secrets/readme.md
+
 # temp directory
 .temp
 .tmp
