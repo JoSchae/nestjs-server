@@ -10,17 +10,18 @@ COPY . .
 RUN npm run build
 
 # Development stage
-FROM node:18.19.1-alpine AS development
+FROM node:18.19.1-alpine AS dev
 
 WORKDIR /usr/src/app
 
 COPY package*.json ./
-RUN npm install -g @nestjs/cli && npm ci
+RUN npm install -g @nestjs/cli && \
+    npm ci
 
 COPY . .
 
 # Production stage
-FROM node:18.19.1-alpine AS production
+FROM node:18.19.1-alpine AS prod
 
 WORKDIR /usr/src/app
 
