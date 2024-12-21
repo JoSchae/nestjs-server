@@ -6,14 +6,21 @@ services:
             target: production
         command: npm run start:prod
     nginx:
+        image: johannesschaefer/nginx:${TAG:-dev}
         build:
+            context: .
+            dockerfile: ./dockerfiles/nginx/Dockerfile
             args:
                 - NODE_ENV=prod
         ports:
             - '80:80'
             - '443:443'
+        depends_on:
+            - nestjs
         volumes:
             - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+        networks:
+            - app-network
     cloudflare-ddns:
         image: johannesschaefer/cloudflare-ddns:${TAG:-dev}
         build:
