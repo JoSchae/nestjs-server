@@ -1,10 +1,13 @@
 services:
     nestjs:
+        image: johannesschaefer/nestjs:prod
         build:
-            context: .
-            dockerfile: ./dockerfiles/nestjs/Dockerfile
             target: prod
+            args:
+                - NODE_ENV=prod
         command: npm run start:prod
+    mongodb:
+        image: johannesschaefer/mongo:prod
     nginx:
         image: johannesschaefer/nginx:prod
         build:
