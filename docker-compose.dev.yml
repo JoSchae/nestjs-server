@@ -1,9 +1,0 @@
-services:
-    nestjs:
-        image: johannesschaefer/nestjs:dev
-    mongodb:
-        image: johannesschaefer/mongo:dev
-    nginx:
-        image: johannesschaefer/nginx:dev
-    cloudflare-ddns:
-        image: johannesschaefer/cloudflare-ddns:dev
