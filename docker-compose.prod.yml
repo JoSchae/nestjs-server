@@ -6,7 +6,7 @@ services:
             target: prod
         command: npm run start:prod
     nginx:
-        image: johannesschaefer/nginx:${TAG:-dev}
+        image: johannesschaefer/nginx:prod
         build:
             context: .
             dockerfile: ./dockerfiles/nginx/Dockerfile
@@ -22,12 +22,10 @@ services:
         networks:
             - app-network
     cloudflare-ddns:
-        image: johannesschaefer/cloudflare-ddns:${TAG:-dev}
+        image: johannesschaefer/cloudflare-ddns:prod
         build:
             context: .
             dockerfile: ./dockerfiles/cloudflare-ddns/Dockerfile
-            # args:
-            #     - CLOUDFLARE_APIKEY=${CLOUDFLARE_APIKEY}
         container_name: cloudflare-ddns
         restart: always
         environment:

@@ -6,7 +6,7 @@ services:
             dockerfile: ./dockerfiles/nestjs/Dockerfile
             target: dev
             args:
-                - NODE_ENV=development
+                - NODE_ENV=dev
         command: npm run start:debug
         volumes:
             - .:/usr/src/app
