@@ -16,12 +16,10 @@ services:
             args:
                 - NODE_ENV=prod
         ports:
-            - '127.0.0.1:80:80'
-            - '127.0.0.1:443:443'
+            - '80:80'
+            - '443:443'
         depends_on:
             - nestjs
-        volumes:
-            - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
         networks:
             - app-network
     cloudflare-ddns:
@@ -29,12 +27,11 @@ services:
         build:
             context: .
             dockerfile: ./dockerfiles/cloudflare-ddns/Dockerfile
+            args:
+                - CLOUDFLARE_APIKEY=${CLOUDFLARE_APIKEY}
         container_name: cloudflare-ddns
         restart: always
-        env_file:
-            - .env
         environment:
-            - API_KEY=${CLOUDFLARE_APIKEY}
             - ZONE=schaeferdevelopment.tech
             - PROXIED=true
             - PUID=1000

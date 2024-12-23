@@ -1,2 +1,4 @@
 # ./cloudflare-ddns/Dockerfile
 FROM oznu/cloudflare-ddns:latest
+ARG CLOUDFLARE_APIKEY
+ENV API_KEY=${CLOUDFLARE_APIKEY}
