@@ -29,11 +29,12 @@ services:
         build:
             context: .
             dockerfile: ./dockerfiles/cloudflare-ddns/Dockerfile
-            args:
-                - API_KEY=${CLOUDFLARE_APIKEY}
         container_name: cloudflare-ddns
         restart: always
+        env_file:
+            - .env
         environment:
+            - API_KEY=${CLOUDFLARE_APIKEY}
             - ZONE=schaeferdevelopment.tech
             - PROXIED=true
             - PUID=1000
