@@ -13,8 +13,8 @@ services:
             - /usr/src/app/node_modules
         container_name: nestjs
         ports:
-            - 127.0.0.1:3000:3000
-            - 127.0.0.1:9229:9229
+            - 3000:3000
+            - 9229:9229
         env_file:
             - .env
         depends_on:
@@ -40,7 +40,7 @@ services:
             - mongodb_log:/var/log/mongodb/
             - ./mongo:/docker-entrypoint-initdb.d:ro
         ports:
-            - '127.0.0.1:27017:27017'
+            - '27017:27017'
         networks:
             - app-network
 
