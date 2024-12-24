@@ -1,0 +1,42 @@
+services:
+    nestjs:
+        image: johannesschaefer/nestjs:dev
+        build:
+            target: dev
+            args:
+                - NODE_ENV=dev
+        command: npm run start:dev
+    mongodb:
+        image: johannesschaefer/mongo:dev
+    nginx:
+        image: johannesschaefer/nginx:dev
+        build:
+            context: .
+            dockerfile: ./dockerfiles/nginx/Dockerfile
+            args:
+                - NODE_ENV=dev
+        volumes:
+            - /etc/letsencrypt:/etc/letsencrypt:ro
+        ports:
+            - '80:80'
+            - '443:443'
+        depends_on:
+            - nestjs
+        networks:
+            - app-network
+    cloudflare-ddns:
+        image: johannesschaefer/cloudflare-ddns:dev
+        build:
+            context: .
+            dockerfile: ./dockerfiles/cloudflare-ddns/Dockerfile
+            args:
+                - CLOUDFLARE_APIKEY=${CLOUDFLARE_APIKEY}
+        container_name: cloudflare-ddns
+        restart: always
+        environment:
+            - ZONE=schaeferdevelopment.tech
+            - PROXIED=true
+            - PUID=1000
+            - PGID=1000
+        networks:
+            - app-network
