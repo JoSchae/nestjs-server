@@ -1,0 +1,28 @@
+services:
+    mongodb:
+        image: johannesschaefer/mongo:dev
+        build:
+            context: .
+            dockerfile: ./dockerfiles/mongodb/Dockerfile
+        container_name: mongodb
+        ports:
+            - '27017:27017'
+        env_file:
+            - .env
+        environment:
+            - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+            - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+            - MONGO_INITDB_DATABASE=${MONGO_DB_DATABASE}
+        volumes:
+            - mongodb_data_local:/data/db/
+            - mongodb_log_local:/var/log/mongodb/
+            - ./mongo:/docker-entrypoint-initdb.d:ro
+        networks:
+            - local-network
+
+volumes:
+    mongodb_data_local:
+    mongodb_log_local:
+networks:
+    local-network:
+        driver: bridge
