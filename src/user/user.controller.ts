@@ -27,7 +27,9 @@ export class UserController {
 				throw new ConflictException('User already exists');
 			}
 			const user = await this.usersService.create(newUser);
-			return res.status(201).json(user);
+			const response = user.toObject();
+			delete response.password;
+			return res.status(201).json(response);
 		} catch (error) {
 			this.logger.error(`Error creating user ${JSON.stringify(error)}`);
 			return res.status(409).json(error);
