@@ -19,6 +19,6 @@ async function bootstrap() {
 	SwaggerModule.setup('api', app, documentFactory);
 
 	app.useGlobalPipes(new ValidationPipe());
-	await app.listen(PORT);
+	await app.listen(PORT, '0.0.0.0');
 }
 bootstrap();

@@ -11,7 +11,7 @@ jobs:
     build-and-push:
         runs-on: ubuntu-latest
         env:
-            TAG: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+            TAG: ${{ github.ref != 'refs/heads/main' && 'prod' || 'dev' }}
         steps:
             - name: Checkout code
               uses: actions/checkout@v3
