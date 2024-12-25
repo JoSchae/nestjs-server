@@ -49,12 +49,12 @@ jobs:
             - name: Build and push Docker images
               env:
                   CLOUDFLARE_APIKEY: ${{ secrets.CLOUDFLARE_APIKEY }}
-                  NODE_ENV: ${TAG:-dev}
+                  NODE_ENV: ${{ github.ref_name == 'something-again-with-prod-nginx' && 'prod' || 'dev' }}
               run: |
                   if [ "${{ github.ref }}" = "refs/heads/main" ]; then
                     docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache
                     docker compose -f docker-compose.yml -f docker-compose.prod.yml push
                   else
-                    docker compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache
-                    docker compose -f docker-compose.yml -f docker-compose.dev.yml push
+                    docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache
+                    docker compose -f docker-compose.yml -f docker-compose.prod.yml push
                   fi
