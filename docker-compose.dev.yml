@@ -5,9 +5,14 @@ services:
             target: dev
             args:
                 - NODE_ENV=dev
-        command: npm run start:dev
+        command: npm run start:debug
+        # ports:
+        #     - 3000:3000
+        #     - 9229:9229
     mongodb:
         image: johannesschaefer/mongo:dev
+        # ports:
+        #     - '27017:27017'
     nginx:
         image: johannesschaefer/nginx:dev
         build:
@@ -15,11 +20,8 @@ services:
             dockerfile: ./dockerfiles/nginx/Dockerfile
             args:
                 - NODE_ENV=dev
-        volumes:
-            - ./nginx/certs:/etc/certs:ro
         ports:
             - '127.0.0.1:80:80'
-            - '127.0.0.1:443:443'
         depends_on:
             - nestjs
         networks:
