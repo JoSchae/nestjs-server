@@ -1,3 +1,4 @@
 # ./nginx/Dockerfile
 FROM nginx:latest
-COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
+ARG NODE_ENV
+COPY ./nginx/nginx.${NODE_ENV}.conf /etc/nginx/nginx.conf
