@@ -41,11 +41,6 @@ jobs:
                   CLOUDFLARE_APIKEY=${{ secrets.CLOUDFLARE_APIKEY }}
                   EOF
 
-            # - name: Generate secrets-file
-            #   run: |
-            #       touch ./secrets/cloudflare_api_key.txt
-            #       echo ${{ secrets.CLOUDFLARE_APIKEY }} > secrets/cloudflare_api_key.txt
-
             - name: Build and push Docker images
               env:
                   CLOUDFLARE_APIKEY: ${{ secrets.CLOUDFLARE_APIKEY }}
