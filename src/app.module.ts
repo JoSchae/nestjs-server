@@ -10,7 +10,7 @@ import { UserModule } from './user/user.module';
 @Module({
 	imports: [
 		ConfigModule.forRoot({
-			envFilePath: [process.env.NODE_ENV !== 'prod' ? '.dev.env' : '.env'],
+			envFilePath: '.env',
 			isGlobal: true,
 			load: [mongodbConfig],
 		}),

@@ -6,13 +6,8 @@ services:
             args:
                 - NODE_ENV=dev
         command: npm run start:debug
-        # ports:
-        #     - 3000:3000
-        #     - 9229:9229
     mongodb:
         image: johannesschaefer/mongo:dev
-        # ports:
-        #     - '27017:27017'
     nginx:
         image: johannesschaefer/nginx:dev
         build:
