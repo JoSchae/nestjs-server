@@ -4,7 +4,7 @@ set -e
 # Cleanup function
 cleanup() {
     echo "Cleaning up..."
-    docker compose -f docker-compose.local.yml down -v
+    docker compose -f docker-compose.local.yml down
     exit 0
 }
 
@@ -34,7 +34,6 @@ kill $LOGS_PID 2>/dev/null || true
 
 # Export MongoDB connection for NestJS
 export MONGO_DB_HOSTNAME=localhost
-export MONGO_DB_PORT=27017
 
 # Start NestJS
 echo "Starting NestJS..."
