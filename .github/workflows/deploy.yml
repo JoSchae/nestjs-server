@@ -1,0 +1,49 @@
+name: create and push docker images
+
+on:
+    push:
+        branches:
+            - main
+            - dev
+
+jobs:
+    build-and-push:
+        runs-on: ubuntu-latest
+        env:
+            TAG: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to Docker Hub
+              uses: docker/login-action@v3
+              with:
+                  username: ${{ secrets.DOCKER_USERNAME }}
+                  password: ${{ secrets.DOCKER_PASSWORD }}
+
+            - name: Generate environment file
+              run: |
+                  cat << EOF > .env
+                  NODE_ENV=${{ env.TAG }}
+                  SERVER_PORT=3000
+                  MONGO_DB_PORT=27017
+                  MONGO_DB_USERNAME=${{ secrets.MONGO_DB_USERNAME }}
+                  MONGO_DB_PASSWORD=${{ secrets.MONGO_DB_PASSWORD }}
+                  MONGO_DB_HOSTNAME=mongodb
+                  MONGO_DB_DATABASE=${{ secrets.MONGO_DB_DATABASE }}
+                  MONGO_DB_ADMINUSER_PASSWORD=${{ secrets.MONGO_DB_ADMINUSER_PASSWORD }}
+                  MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}
+                  MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
+                  CLOUDFLARE_APIKEY=${{ secrets.CLOUDFLARE_APIKEY }}
+                  EOF
+
+            - name: Build and push Docker images
+              env:
+                  CLOUDFLARE_APIKEY: ${{ secrets.CLOUDFLARE_APIKEY }}
+                  NODE_ENV: ${{ env.TAG }}
+              run: |
+                  docker compose -f docker-compose.yml -f docker-compose.${{ env.TAG }}.yml build --no-cache
+                  docker compose -f docker-compose.yml -f docker-compose.${{ env.TAG }}.yml push

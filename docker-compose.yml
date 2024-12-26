@@ -1,0 +1,48 @@
+services:
+    nestjs:
+        image: johannesschaefer/nestjs:${TAG:-dev}
+        build:
+            context: .
+            dockerfile: ./dockerfiles/nestjs/Dockerfile
+            target: dev
+            args:
+                - NODE_ENV=dev
+        command: npm run start:debug
+        volumes:
+            - .:/usr/src/app
+            - /usr/src/app/node_modules
+        container_name: nestjs
+        env_file:
+            - .env
+        depends_on:
+            mongodb:
+                condition: service_healthy
+        networks:
+            - app-network
+
+    mongodb:
+        image: johannesschaefer/mongo:${TAG:-dev}
+        build:
+            context: .
+            dockerfile: ./dockerfiles/mongodb/Dockerfile
+        container_name: mongodb
+        env_file:
+            - .env
+        environment:
+            - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+            - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+            - MONGO_INITDB_DATABASE=${MONGO_DB_DATABASE}
+        volumes:
+            - mongodb_data:/data/db/
+            - mongodb_log:/var/log/mongodb/
+            - ./mongo:/docker-entrypoint-initdb.d:ro
+        networks:
+            - app-network
+
+volumes:
+    mongodb_data:
+    mongodb_log:
+
+networks:
+    app-network:
+        driver: bridge

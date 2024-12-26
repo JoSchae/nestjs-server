@@ -1,0 +1,6 @@
+{
+    "yaml.schemas": {
+        "file:///home/johannes/.vscode/extensions/atlassian.atlascode-3.0.14/resources/schemas/pipelines-schema.json": "bitbucket-pipelines.yml",
+        "https://json.schemastore.org/github-workflow.json": "file:///home/johannes/GIT/Johannes/nestjs-server/.github/workflows/deploy.yml"
+    }
+}
