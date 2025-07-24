@@ -12,7 +12,6 @@ async function bootstrap() {
 		.setTitle('SchaeferDevelopment NestJS API')
 		.setDescription('API for SchaeferDevelopment')
 		.setVersion('1.0')
-		.addTag('SchaeferDevelopment')
 		.addBearerAuth()
 		.build();
 	const documentFactory = () => SwaggerModule.createDocument(app, config);
