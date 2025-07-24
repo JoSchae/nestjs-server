@@ -14,7 +14,7 @@ RUN apt-get update && \
 RUN mkdir -p /docker-entrypoint-initdb.d/node_modules
 
 # Copy init script
-COPY ./mongo/init-mongodb.js /docker-entrypoint-initdb.d/
+COPY ./mongo/init-mongodb.mongo /docker-entrypoint-initdb.d/
 
 # Create a wrapper script to set up Node.js environment
 RUN echo '#!/bin/bash\n\
