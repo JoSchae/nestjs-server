@@ -3,6 +3,7 @@ import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { UserService } from 'src/user/user.service';
 import { jwtConstants } from './constants';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -11,11 +12,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 	constructor(
 		@Inject(forwardRef(() => UserService))
 		private readonly usersService: UserService,
+		private configService: ConfigService,
 	) {
 		super({
 			jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
 			ignoreExpiration: false,
-			secretOrKey: jwtConstants.secret,
+			secretOrKey: configService.get<string>('JWT_SECRET') || jwtConstants.secret,
 			usernameField: 'email',
 		});
 	}

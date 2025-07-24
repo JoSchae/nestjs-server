@@ -25,6 +25,7 @@ gnome-terminal -- bash -c '
 
     echo "Starting npm..."
     export MONGO_DB_HOSTNAME=localhost
+    export MONGO_DB_PORT=27017
     npm run start:dev
 
     # Cleanup will be called automatically on exit

@@ -42,11 +42,11 @@ export class AuthService {
 			sub: userWithRoles._id,
 			roles: userWithRoles.roles?.map((role) => role._id) || [],
 		};
+
 		return {
 			access_token: this.jwtService.sign(payload),
 		};
 	}
-
 	public async getHashedPassword(password: string): Promise<any> {
 		return new Promise((resolve, reject) => {
 			bcrypt.hash(password, 10, (err, hash) => {

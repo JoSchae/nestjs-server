@@ -1,19 +1,16 @@
 import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { AuthGuard } from '@nestjs/passport';
+import { CanActivate } from '@nestjs/common';
 import { extractTokenFromHeader } from 'src/utils/request.util';
 import { IS_PUBLIC_KEY } from './skipAuth.decorator';
-import { jwtConstants } from './constants';
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {
+export class JwtAuthGuard implements CanActivate {
 	constructor(
 		private jwtService: JwtService,
 		private reflector: Reflector,
-	) {
-		super();
-	}
+	) {}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
 		const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -30,9 +27,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 			throw new UnauthorizedException();
 		}
 		try {
-			const payload = await this.jwtService.verifyAsync(token, {
-				secret: jwtConstants.secret,
-			});
+			const payload = await this.jwtService.verifyAsync(token);
 			request['user'] = payload;
 		} catch (error) {
 			throw new UnauthorizedException(error.message);

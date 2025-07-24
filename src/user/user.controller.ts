@@ -15,7 +15,6 @@ import {
 import { UserService } from './user.service';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { User } from 'src/user/model/user.model';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import { RequirePermissions } from 'src/auth/decorators/permissions.decorator';
 
@@ -26,7 +25,7 @@ export class UserController {
 	constructor(private readonly usersService: UserService) {}
 
 	@Post('create')
-	@UseGuards(JwtAuthGuard, PermissionsGuard)
+	@UseGuards(PermissionsGuard)
 	@RequirePermissions('user:create')
 	@ApiOperation({ summary: 'Create a new user' })
 	@ApiBody({ description: 'User data', type: User })
@@ -53,7 +52,7 @@ export class UserController {
 	}
 
 	@Get('all')
-	@UseGuards(JwtAuthGuard, PermissionsGuard)
+	@UseGuards(PermissionsGuard)
 	@RequirePermissions('user:read')
 	@ApiOperation({ summary: 'Get all users' })
 	@ApiBearerAuth()
@@ -70,26 +69,7 @@ export class UserController {
 		}
 	}
 
-	@Get(':id')
-	@UseGuards(JwtAuthGuard, PermissionsGuard)
-	@RequirePermissions('user:read')
-	@ApiOperation({ summary: 'Get user by ID' })
-	@ApiBearerAuth()
-	@ApiResponse({ status: 200, description: 'User retrieved successfully.' })
-	@ApiResponse({ status: 404, description: 'User not found.' })
-	public async getUserById(@Param('id') id: string, @Response() res): Promise<any> {
-		this.logger.log(`Getting user by id: ${id}`);
-		try {
-			const user = await this.usersService.findById(id);
-			return res.status(200).json(user);
-		} catch (error) {
-			this.logger.error(`Error getting user by id ${error}`);
-			res.status(404).json(error);
-		}
-	}
-
 	@Get('profile')
-	@UseGuards(JwtAuthGuard)
 	@ApiOperation({ summary: 'Get user profile' })
 	@ApiBearerAuth()
 	@ApiResponse({ status: 200, description: 'The user profile has been successfully retrieved.' })
@@ -112,8 +92,26 @@ export class UserController {
 		}
 	}
 
+	@Get(':id')
+	@UseGuards(PermissionsGuard)
+	@RequirePermissions('user:read')
+	@ApiOperation({ summary: 'Get user by ID' })
+	@ApiBearerAuth()
+	@ApiResponse({ status: 200, description: 'User retrieved successfully.' })
+	@ApiResponse({ status: 404, description: 'User not found.' })
+	public async getUserById(@Param('id') id: string, @Response() res): Promise<any> {
+		this.logger.log(`Getting user by id: ${id}`);
+		try {
+			const user = await this.usersService.findById(id);
+			return res.status(200).json(user);
+		} catch (error) {
+			this.logger.error(`Error getting user by id ${error}`);
+			res.status(404).json(error);
+		}
+	}
+
 	@Put('update')
-	@UseGuards(JwtAuthGuard, PermissionsGuard)
+	@UseGuards(PermissionsGuard)
 	@RequirePermissions('user:update')
 	@ApiOperation({ summary: 'Update user profile' })
 	@ApiBearerAuth()
@@ -136,7 +134,7 @@ export class UserController {
 	}
 
 	@Delete('delete')
-	@UseGuards(JwtAuthGuard, PermissionsGuard)
+	@UseGuards(PermissionsGuard)
 	@RequirePermissions('user:delete')
 	@ApiOperation({ summary: 'Delete user profile' })
 	@ApiBearerAuth()
@@ -159,7 +157,7 @@ export class UserController {
 	}
 
 	@Post(':userId/roles/:roleId')
-	@UseGuards(JwtAuthGuard, PermissionsGuard)
+	@UseGuards(PermissionsGuard)
 	@RequirePermissions('user:update')
 	@ApiOperation({ summary: 'Assign role to user' })
 	@ApiBearerAuth()
@@ -181,7 +179,7 @@ export class UserController {
 	}
 
 	@Delete(':userId/roles/:roleId')
-	@UseGuards(JwtAuthGuard, PermissionsGuard)
+	@UseGuards(PermissionsGuard)
 	@RequirePermissions('user:update')
 	@ApiOperation({ summary: 'Remove role from user' })
 	@ApiBearerAuth()
