@@ -2208,16 +2208,730 @@ Your application is now fully containerized and ready for the next step: adding 
 
 ## Adding Nginx
 
-### Nginx image
+Now let's add Nginx as a reverse proxy to handle SSL termination, load balancing, and serve static files efficiently.
 
-### Nginx config
+### Nginx Image
+
+Create the Nginx Dockerfile at `dockerfiles/nginx/Dockerfile`:
+
+```dockerfile
+FROM nginx:alpine
+
+# Install additional tools for health checks and SSL
+RUN apk add --no-cache \
+    curl \
+    openssl
+
+# Create necessary directories
+RUN mkdir -p /var/log/nginx \
+    && mkdir -p /etc/nginx/ssl \
+    && mkdir -p /var/www/certbot
+
+# Copy custom nginx configuration
+COPY nginx/nginx.prod.conf /etc/nginx/nginx.conf
+
+# Create nginx user and set permissions
+RUN chown -R nginx:nginx /var/log/nginx \
+    && chown -R nginx:nginx /etc/nginx/ssl \
+    && chown -R nginx:nginx /var/www/certbot
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost/health || exit 1
+
+# Expose ports
+EXPOSE 80 443
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+### Nginx Configuration
+
+Create the production Nginx configuration at `nginx/nginx.prod.conf`:
+
+```nginx
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+pid /var/run/nginx.pid;
+
+events {
+    worker_connections 1024;
+    use epoll;
+    multi_accept on;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # Logging format
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log /var/log/nginx/access.log main;
+
+    # Performance optimizations
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+    client_max_body_size 20M;
+
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types
+        text/plain
+        text/css
+        text/xml
+        text/javascript
+        application/json
+        application/javascript
+        application/xml+rss
+        application/atom+xml;
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+
+    # Rate limiting
+    limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+    limit_req_zone $binary_remote_addr zone=login:10m rate=5r/m;
+
+    # Upstream backend
+    upstream nestjs_backend {
+        least_conn;
+        server nestjs:3000;
+        keepalive 32;
+    }
+
+    # HTTP server (redirect to HTTPS)
+    server {
+        listen 80;
+        server_name localhost;
+
+        # Let's Encrypt verification
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
+
+        # Health check endpoint
+        location /health {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
+        }
+
+        # Redirect all other traffic to HTTPS
+        location / {
+            return 301 https://$server_name$request_uri;
+        }
+    }
+
+    # HTTPS server
+    server {
+        listen 443 ssl http2;
+        server_name localhost;
+
+        # SSL configuration (will be updated with real certificates)
+        ssl_certificate /etc/nginx/ssl/cert.pem;
+        ssl_certificate_key /etc/nginx/ssl/key.pem;
+
+        # Modern SSL configuration
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
+        ssl_prefer_server_ciphers off;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+
+        # Security headers for HTTPS
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+        # API routes with rate limiting
+        location /api {
+            limit_req zone=api burst=20 nodelay;
+
+            proxy_pass http://nestjs_backend;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_cache_bypass $http_upgrade;
+            proxy_read_timeout 86400;
+        }
+
+        # Auth routes with stricter rate limiting
+        location /auth {
+            limit_req zone=login burst=5 nodelay;
+
+            proxy_pass http://nestjs_backend;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_cache_bypass $http_upgrade;
+        }
+
+        # Health check
+        location /health {
+            access_log off;
+            proxy_pass http://nestjs_backend/health;
+            proxy_set_header Host $host;
+        }
+
+        # All other routes
+        location / {
+            proxy_pass http://nestjs_backend;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_cache_bypass $http_upgrade;
+        }
+    }
+}
+```
+
+Create a development configuration at `nginx/nginx.dev.conf`:
+
+```nginx
+user nginx;
+worker_processes 1;
+error_log /var/log/nginx/error.log warn;
+pid /var/run/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log /var/log/nginx/access.log main;
+
+    sendfile on;
+    keepalive_timeout 65;
+    client_max_body_size 20M;
+
+    upstream nestjs_backend {
+        server nestjs:3000;
+    }
+
+    server {
+        listen 80;
+        server_name localhost;
+
+        location / {
+            proxy_pass http://nestjs_backend;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_cache_bypass $http_upgrade;
+        }
+
+        location /health {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
+        }
+    }
+}
+```
+
+### SSL Certificate Setup
+
+For development, create self-signed certificates:
+
+```bash
+# Create SSL directory
+mkdir -p nginx/ssl
+
+# Generate self-signed certificate
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout nginx/ssl/key.pem \
+    -out nginx/ssl/cert.pem \
+    -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
+```
+
+For production, you'll use Let's Encrypt certificates managed by Certbot (covered in the Cloudflare section).
 
 ## Adding Cloudflare
 
+Cloudflare provides CDN, DDoS protection, and DNS management for your application. We'll also set up dynamic DNS to automatically update your domain when your server IP changes.
+
 ### Cloudflare Setup
 
-### Nginx config
+#### 1. Domain Configuration
 
-### DDNS image
+1. **Add your domain to Cloudflare**:
 
-## Github Workflows
+    - Sign up at [cloudflare.com](https://cloudflare.com)
+    - Add your domain
+    - Update your domain's nameservers to Cloudflare's
+
+2. **Create API Token**:
+
+    - Go to Cloudflare Dashboard → My Profile → API Tokens
+    - Create a custom token with these permissions:
+        - Zone: Zone Settings:Read, Zone:Read
+        - Zone Resource: Include specific zone (your domain)
+        - DNS: DNS:Edit
+    - Save the token securely
+
+3. **Get Zone ID**:
+    - In your domain's Cloudflare dashboard
+    - Right sidebar → API section → Zone ID
+
+#### 2. DNS Records
+
+Set up these DNS records in Cloudflare:
+
+```
+Type: A
+Name: @ (or your subdomain)
+Content: Your server's IP address
+Proxy status: Proxied (orange cloud)
+
+Type: A
+Name: www
+Content: Your server's IP address
+Proxy status: Proxied (orange cloud)
+```
+
+#### 3. Cloudflare Settings
+
+Configure these settings in your Cloudflare dashboard:
+
+**SSL/TLS**:
+
+- SSL/TLS encryption mode: "Full (strict)"
+- Always Use HTTPS: On
+- HTTP Strict Transport Security (HSTS): Enabled
+
+**Security**:
+
+- Security Level: Medium
+- Bot Fight Mode: On
+- Challenge Passage: 30 minutes
+
+**Speed**:
+
+- Auto Minify: CSS, JavaScript, HTML
+- Brotli: On
+- Early Hints: On
+
+**Caching**:
+
+- Caching Level: Standard
+- Browser Cache TTL: 4 hours
+
+### Enhanced Nginx Config for Cloudflare
+
+Update the Nginx configuration to work optimally with Cloudflare. Create `nginx/nginx.cloudflare.conf`:
+
+```nginx
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+pid /var/run/nginx.pid;
+
+events {
+    worker_connections 1024;
+    use epoll;
+    multi_accept on;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # Real IP configuration for Cloudflare
+    set_real_ip_from 173.245.48.0/20;
+    set_real_ip_from 103.21.244.0/22;
+    set_real_ip_from 103.22.200.0/22;
+    set_real_ip_from 103.31.4.0/22;
+    set_real_ip_from 141.101.64.0/18;
+    set_real_ip_from 108.162.192.0/18;
+    set_real_ip_from 190.93.240.0/20;
+    set_real_ip_from 188.114.96.0/20;
+    set_real_ip_from 197.234.240.0/22;
+    set_real_ip_from 198.41.128.0/17;
+    set_real_ip_from 162.158.0.0/15;
+    set_real_ip_from 104.16.0.0/13;
+    set_real_ip_from 104.24.0.0/14;
+    set_real_ip_from 172.64.0.0/13;
+    set_real_ip_from 131.0.72.0/22;
+    real_ip_header CF-Connecting-IP;
+
+    # Custom log format including Cloudflare headers
+    log_format cloudflare '$remote_addr - $remote_user [$time_local] "$request" '
+                         '$status $body_bytes_sent "$http_referer" '
+                         '"$http_user_agent" CF-IP:"$http_cf_connecting_ip" '
+                         'CF-Country:"$http_cf_ipcountry" CF-Ray:"$http_cf_ray"';
+
+    access_log /var/log/nginx/access.log cloudflare;
+
+    # Performance optimizations
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+    client_max_body_size 20M;
+
+    # Gzip compression (Cloudflare will handle this, but good fallback)
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types
+        text/plain
+        text/css
+        text/xml
+        text/javascript
+        application/json
+        application/javascript
+        application/xml+rss
+        application/atom+xml;
+
+    # Security headers (some redundant with Cloudflare but good practice)
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Rate limiting (additional layer to Cloudflare)
+    limit_req_zone $binary_remote_addr zone=api:10m rate=50r/s;
+    limit_req_zone $binary_remote_addr zone=login:10m rate=10r/m;
+
+    # Upstream backend
+    upstream nestjs_backend {
+        least_conn;
+        server nestjs:3000;
+        keepalive 32;
+    }
+
+    server {
+        listen 80;
+        server_name your-domain.com www.your-domain.com;
+
+        # Health check
+        location /health {
+            access_log off;
+            proxy_pass http://nestjs_backend/health;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # API routes with rate limiting
+        location /api {
+            limit_req zone=api burst=100 nodelay;
+
+            proxy_pass http://nestjs_backend;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+            proxy_set_header CF-IPCountry $http_cf_ipcountry;
+            proxy_cache_bypass $http_upgrade;
+            proxy_read_timeout 86400;
+        }
+
+        # Auth routes with stricter rate limiting
+        location /auth {
+            limit_req zone=login burst=10 nodelay;
+
+            proxy_pass http://nestjs_backend;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+            proxy_set_header CF-IPCountry $http_cf_ipcountry;
+        }
+
+        # All other routes
+        location / {
+            proxy_pass http://nestjs_backend;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+            proxy_set_header CF-IPCountry $http_cf_ipcountry;
+            proxy_cache_bypass $http_upgrade;
+        }
+    }
+}
+```
+
+### DDNS Image
+
+To automatically update your Cloudflare DNS records when your server IP changes, we'll use the proven **oznu/cloudflare-ddns** Docker image. This approach is superior to custom scripts because it's well-maintained, reliable, and requires minimal configuration.
+
+#### Step 1: Create the Cloudflare DDNS Dockerfile
+
+Create the Dockerfile at `dockerfiles/cloudflare-ddns/Dockerfile`:
+
+```dockerfile
+# ./dockerfiles/cloudflare-ddns/Dockerfile
+FROM oznu/cloudflare-ddns:latest
+ARG CLOUDFLARE_APIKEY
+ENV API_KEY=${CLOUDFLARE_APIKEY}
+```
+
+#### Step 2: Add DDNS Service to Docker Compose
+
+Add the cloudflare-ddns service to your `docker-compose.prod.yml`:
+
+```yaml
+# Add this service to your docker-compose.prod.yml
+cloudflare-ddns:
+    image: your-dockerhub-username/cloudflare-ddns:prod
+    build:
+        context: .
+        dockerfile: ./dockerfiles/cloudflare-ddns/Dockerfile
+        args:
+            - CLOUDFLARE_APIKEY=${CLOUDFLARE_APIKEY}
+    container_name: cloudflare-ddns
+    restart: always
+    environment:
+        - ZONE=your-domain.com
+        - PROXIED=true
+        - PUID=1000
+        - PGID=1000
+    networks:
+        - app-network
+```
+
+#### Step 3: Configure Environment Variables
+
+Add these variables to your `.env` file:
+
+```env
+# Cloudflare DDNS Configuration
+CLOUDFLARE_APIKEY=your_cloudflare_api_key_here
+```
+
+#### Why This Approach is Excellent:
+
+- ✅ **Reliable**: Uses a well-maintained, community-trusted image
+- ✅ **Simple**: No custom scripts to maintain
+- ✅ **Automatic**: Continuously monitors and updates DNS records
+- ✅ **Lightweight**: Minimal resource usage
+- ✅ **Battle-tested**: Thousands of users in production
+
+### Environment Variables for Cloudflare
+
+#### Step 1: Set up Environment Variables
+
+Add these environment variables to your production `.env` file:
+
+```env
+# Cloudflare DDNS Configuration
+CLOUDFLARE_APIKEY=your_cloudflare_api_key_here
+```
+
+#### Step 2: Update Your Docker Compose
+
+Your production `docker-compose.prod.yml` should include the cloudflare-ddns service:
+
+```yaml
+version: '3.8'
+
+services:
+    # ... your other services (nestjs, mongodb, nginx)
+
+    cloudflare-ddns:
+        image: your-dockerhub-username/cloudflare-ddns:prod
+        build:
+            context: .
+            dockerfile: ./dockerfiles/cloudflare-ddns/Dockerfile
+            args:
+                - CLOUDFLARE_APIKEY=${CLOUDFLARE_APIKEY}
+        container_name: cloudflare-ddns
+        restart: always
+        environment:
+            - ZONE=your-domain.com # Replace with your actual domain
+            - PROXIED=true
+            - PUID=1000
+            - PGID=1000
+        networks:
+            - app-network
+```
+
+#### Step 3: Add to GitHub Actions (Optional)
+
+If you're using automated deployments, update your GitHub Actions workflow to build and push the DDNS image:
+
+```yaml
+# Add this to your .github/workflows/deploy.yml
+- name: Build and push DDNS image
+  run: |
+      docker build -f dockerfiles/cloudflare-ddns/Dockerfile \
+          --build-arg CLOUDFLARE_APIKEY=${{ secrets.CLOUDFLARE_APIKEY }} \
+          -t your-dockerhub-username/cloudflare-ddns:prod .
+      docker push your-dockerhub-username/cloudflare-ddns:prod
+```
+
+#### Configuration Explanation:
+
+- **ZONE**: Your domain name (e.g., `example.com`)
+- **PROXIED**: Set to `true` to maintain Cloudflare's proxy protection (orange cloud)
+- **PUID/PGID**: User and group IDs for proper permissions
+- **API_KEY**: Your Cloudflare API key passed as build argument
+
+#### How It Works:
+
+1. **Monitors IP**: Container continuously checks your public IP address
+2. **Detects Changes**: Compares current IP with DNS record
+3. **Updates DNS**: Automatically updates A record when IP changes
+4. **Maintains Proxy**: Keeps Cloudflare proxy status enabled
+5. **Logs Activity**: Provides logs for monitoring and debugging
+
+#### Testing the Setup:
+
+```bash
+# Deploy with the DDNS service
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# Check DDNS container logs
+docker logs cloudflare-ddns
+
+# You should see logs like:
+# "IP address has not changed"
+# or
+# "Updated DNS record for your-domain.com from x.x.x.x to y.y.y.y"
+```
+
+## GitHub Workflows
+
+// TODO
+
+Now let's add a simple GitHub Actions workflow. We don't need the full enterprise CI/CD pipeline here - just something that shows good practices and validates that everything works.
+
+### Setting Up Basic CI
+
+Create the workflows directory:
+
+```bash
+mkdir -p .github/workflows
+```
+
+Now let's create a simple but effective CI workflow at `.github/workflows/deploy.yml`:
+
+```yaml
+name: create and push docker images
+
+on:
+    push:
+        branches:
+            - main
+            - dev
+
+jobs:
+    build-and-push:
+        runs-on: ubuntu-latest
+        env:
+            TAG: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to Docker Hub
+              uses: docker/login-action@v3
+              with:
+                  username: ${{ secrets.DOCKER_USERNAME }}
+                  password: ${{ secrets.DOCKER_PASSWORD }}
+
+            - name: Generate environment file
+              run: |
+                  cat << EOF > .env
+                  NODE_ENV=${{ env.TAG }}
+                  SERVER_PORT=3000
+                  MONGO_DB_PORT=27017
+                  MONGO_DB_USERNAME=${{ secrets.MONGO_DB_USERNAME }}
+                  MONGO_DB_PASSWORD=${{ secrets.MONGO_DB_PASSWORD }}
+                  MONGO_DB_HOSTNAME=mongodb
+                  MONGO_DB_DATABASE=${{ secrets.MONGO_DB_DATABASE }}
+                  MONGO_DB_ADMINUSER_PASSWORD=${{ secrets.MONGO_DB_ADMINUSER_PASSWORD }}
+                  MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}
+                  MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
+                  CLOUDFLARE_APIKEY=${{ secrets.CLOUDFLARE_APIKEY }}
+                  EOF
+
+            - name: Build and push Docker images
+              env:
+                  CLOUDFLARE_APIKEY: ${{ secrets.CLOUDFLARE_APIKEY }}
+                  NODE_ENV: ${{ env.TAG }}
+              run: |
+                  docker compose -f docker-compose.yml -f docker-compose.${{ env.TAG }}.yml build --no-cache
+                  docker compose -f docker-compose.yml -f docker-compose.${{ env.TAG }}.yml push
+```
+
+Pretty straightforward! This workflow will:
+
+- Run your tests with a real MongoDB instance
+- Build your application to make sure it compiles
+- Test that all your Docker images build correctly
+
+### Package.json Scripts
+
+Make sure you have these scripts in your `package.json` (most should already be there from when we set up NestJS):
+
+```json
+{
+	"scripts": {
+		"build": "nest build",
+		"format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+		"start": "nest start",
+		"start:dev": "nest start --watch",
+		"start:debug": "nest start --debug --watch",
+		"start:prod": "node dist/main",
+		"lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+		"test": "jest",
+		"test:watch": "jest --watch",
+		"test:cov": "jest --coverage",
+		"test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+		"test:e2e": "jest --config ./test/jest-e2e.json"
+	}
+}
+```
