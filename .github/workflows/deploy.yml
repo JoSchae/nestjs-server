@@ -40,10 +40,21 @@ jobs:
                   CLOUDFLARE_APIKEY=${{ secrets.CLOUDFLARE_APIKEY }}
                   EOF
 
+            - name: Clear Docker system cache
+              run: |
+                  docker system prune -af
+                  docker builder prune -af
+
             - name: Build and push Docker images
               env:
                   CLOUDFLARE_APIKEY: ${{ secrets.CLOUDFLARE_APIKEY }}
                   NODE_ENV: ${{ env.TAG }}
               run: |
-                  docker compose -f docker-compose.yml -f docker-compose.${{ env.TAG }}.yml build --no-cache
+                  # Force remove any existing images with same tags
+                  docker compose -f docker-compose.yml -f docker-compose.${{ env.TAG }}.yml down --rmi all || true
+
+                  # Build with no cache and no build context reuse
+                  DOCKER_BUILDKIT=1 docker compose -f docker-compose.yml -f docker-compose.${{ env.TAG }}.yml build --no-cache --pull
+
+                  # Push the images
                   docker compose -f docker-compose.yml -f docker-compose.${{ env.TAG }}.yml push
