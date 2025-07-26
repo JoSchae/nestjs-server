@@ -666,11 +666,11 @@ Now, this is important: You secret-constant should never be public and as sophis
 
 ```typescript
 export const jwtConstants = {
-	secret: 'JWTSecret#@!',
+	secret: process.env.JWT_SECRET || 'JWTSecret#@!',
 };
 ```
 
-In a production-environment, this is a secret, that should be set by a workflow (I'm using Github workflows for example. More regarding those in a later part of this tutorial).
+In a production-environment, this is a secret, that should be set by environment variables or a workflow (I'm using Github workflows for example. More regarding those in a later part of this tutorial).
 
 Also, now is a perfect time to create util functions. We need a recouring way to extract the JWT from request header: **utils/request.util.ts**
 
@@ -1441,10 +1441,16 @@ touch ./src/shared/config/mongodb.config.ts
 **mongodb.config.ts**:
 
 ```typescript
-export default () => ({
-	mongodb: {
-		uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/nestjs-server',
-	},
+import { registerAs } from '@nestjs/config';
+
+/**
+ * Mongo database connection config
+ */
+export default registerAs('mongodb', () => {
+	const { MONGO_DB_PORT, MONGO_DB_HOSTNAME, MONGO_DB_DATABASE, MONGO_DB_USERNAME, MONGO_DB_PASSWORD } = process.env;
+	return {
+		uri: `mongodb://${MONGO_DB_USERNAME}:${MONGO_DB_PASSWORD}@${MONGO_DB_HOSTNAME}:${MONGO_DB_PORT}/${MONGO_DB_DATABASE}?authSource=${MONGO_DB_DATABASE}`,
+	};
 });
 ```
 
@@ -1453,10 +1459,19 @@ export default () => ({
 Create a `.env` file in your project root:
 
 ```env
-MONGODB_URI=mongodb://localhost:27017/nestjs-server
+SERVER_PORT=3000
+MONGO_DB_PORT=27017
+MONGO_DB_USERNAME=nestjs_user
+MONGO_DB_PASSWORD=nestjs_password
+MONGO_DB_HOSTNAME=mongodb
+MONGO_DB_DATABASE=nestjs-server
+MONGO_DB_ADMIN_USERNAME=admin@admin.com
+MONGO_DB_ADMINUSER_PASSWORD=adminpassword
+MONGO_INITDB_ROOT_USERNAME=root
+MONGO_INITDB_ROOT_PASSWORD=rootpassword
+CLOUDFLARE_APIKEY=noKeySet
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 JWT_EXPIRATION=3600s
-PORT=3000
 ```
 
 **Important**: Add `.env` to your `.gitignore` file to prevent committing sensitive information.
@@ -1477,6 +1492,8 @@ import { UserModule } from './user/user.module';
 import { RoleModule } from './role/role.module';
 import { PermissionModule } from './permission/permission.module';
 import { SeedModule } from './seed/seed.module';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
 	imports: [
@@ -1499,7 +1516,13 @@ import { SeedModule } from './seed/seed.module';
 		SeedModule,
 	],
 	controllers: [AppController],
-	providers: [AppService],
+	providers: [
+		AppService,
+		{
+			provide: APP_GUARD,
+			useClass: JwtAuthGuard,
+		},
+	],
 })
 export class AppModule {}
 ```
@@ -1859,53 +1882,59 @@ Now let's create Docker Compose files for different environments. We'll create s
 #### docker-compose.yml (Base Configuration)
 
 ```yaml
-version: '3.8'
-
 services:
     nestjs:
+        image: johannesschaefer/nestjs:${TAG:-dev}
         build:
             context: .
-            dockerfile: dockerfiles/nestjs/Dockerfile
-            target: ${BUILD_TARGET:-development}
-        container_name: nestjs-server
-        restart: unless-stopped
-        environment:
-            - NODE_ENV=${NODE_ENV:-development}
-            - PORT=3000
-            - MONGODB_URI=mongodb://mongodb:27017/nestjs-server
-            - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key}
-            - JWT_EXPIRATION=${JWT_EXPIRATION:-3600s}
-        depends_on:
-            - mongodb
+            dockerfile: ./dockerfiles/nestjs/Dockerfile
+            target: dev
+            args:
+                - NODE_ENV=dev
+        command: npm run start:debug
         volumes:
-            - ./logs:/usr/src/app/logs
+            - .:/usr/src/app
+            - /usr/src/app/node_modules
+        container_name: nestjs
+        env_file:
+            - .env
+        depends_on:
+            mongodb:
+                condition: service_healthy
         networks:
-            - nestjs-network
+            - app-network
 
     mongodb:
+        image: johannesschaefer/mongo:${TAG:-dev}
         build:
             context: .
-            dockerfile: dockerfiles/mongodb/Dockerfile
+            dockerfile: ./dockerfiles/mongodb/Dockerfile
         container_name: mongodb
-        restart: unless-stopped
+        env_file:
+            - .env
         environment:
-            - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME:-admin}
-            - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-password}
-            - MONGO_INITDB_DATABASE=nestjs-server
+            - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+            - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+            - MONGO_INITDB_DATABASE=${MONGO_DB_DATABASE}
         volumes:
-            - mongodb_data:/data/db
-            - mongodb_config:/data/configdb
-            - ./mongo/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
-            - ./logs/mongodb_log:/var/log/mongodb
+            - mongodb_data:/data/db/
+            - mongodb_log:/var/log/mongodb/
+            - ./mongo:/docker-entrypoint-initdb.d:ro
+        healthcheck:
+            test: ['CMD', 'mongosh', '--quiet', '--eval', "db.runCommand('ping').ok"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 40s
         networks:
-            - nestjs-network
+            - app-network
 
 volumes:
     mongodb_data:
-    mongodb_config:
+    mongodb_log:
 
 networks:
-    nestjs-network:
+    app-network:
         driver: bridge
 ```
 
@@ -2031,33 +2060,114 @@ EXPOSE 27017
 Create the MongoDB initialization script at `mongo/init-mongodb.js`:
 
 ```javascript
-// MongoDB initialization script
-print('Start MongoDB initialization...');
+// MongoDB initialization script for NestJS RBAC system
+print('Starting MongoDB initialization for NestJS RBAC system...');
 
-// Create the main database
-db = db.getSiblingDB('nestjs-server');
+// Check if required environment variables are set
+if (!process.env.MONGO_INITDB_ROOT_USERNAME || !process.env.MONGO_INITDB_ROOT_PASSWORD) {
+	print('ERROR: Root username and password environment variables are required');
+	quit(1);
+}
 
-// Create application user
-db.createUser({
-	user: 'nestjs_user',
-	pwd: 'nestjs_password',
-	roles: [
-		{
-			role: 'readWrite',
-			db: 'nestjs-server',
-		},
-	],
-});
+if (!process.env.MONGO_DB_USERNAME || !process.env.MONGO_DB_PASSWORD || !process.env.MONGO_DB_DATABASE) {
+	print('ERROR: Database username, password, and database name environment variables are required');
+	quit(1);
+}
 
-// Create indexes for better performance
-db.users.createIndex({ email: 1 }, { unique: true });
-db.roles.createIndex({ name: 1 }, { unique: true });
-db.permissions.createIndex({ name: 1 }, { unique: true });
+// Switch to admin database for authentication
+db = db.getSiblingDB('admin');
 
-// Create TTL index for sessions (if you're storing them in MongoDB)
-db.sessions.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+// Authenticate as root user
+try {
+	db.auth(process.env.MONGO_INITDB_ROOT_USERNAME, process.env.MONGO_INITDB_ROOT_PASSWORD);
+	print('Successfully authenticated as root user');
+} catch (error) {
+	print('ERROR: Failed to authenticate as root user: ' + error);
+	quit(1);
+}
 
-print('MongoDB initialization completed.');
+// Switch to application database
+db = db.getSiblingDB(process.env.MONGO_DB_DATABASE);
+print('Switched to database: ' + process.env.MONGO_DB_DATABASE);
+
+// Check if application user already exists
+var existingUser = db.getUser(process.env.MONGO_DB_USERNAME);
+if (existingUser) {
+	print('Application user already exists: ' + process.env.MONGO_DB_USERNAME);
+} else {
+	try {
+		// Create application user
+		db.createUser({
+			user: process.env.MONGO_DB_USERNAME,
+			pwd: process.env.MONGO_DB_PASSWORD,
+			roles: [
+				{ role: 'readWrite', db: process.env.MONGO_DB_DATABASE },
+				{ role: 'dbAdmin', db: process.env.MONGO_DB_DATABASE },
+			],
+		});
+		print('Successfully created application user: ' + process.env.MONGO_DB_USERNAME);
+	} catch (error) {
+		print('ERROR: Failed to create application user: ' + error);
+		quit(1);
+	}
+}
+
+// Create collections if they don't exist
+try {
+	// Create collections for RBAC system
+	if (!db.getCollectionNames().includes('users')) {
+		db.createCollection('users');
+		print('Created users collection');
+	}
+
+	if (!db.getCollectionNames().includes('roles')) {
+		db.createCollection('roles');
+		print('Created roles collection');
+	}
+
+	if (!db.getCollectionNames().includes('permissions')) {
+		db.createCollection('permissions');
+		print('Created permissions collection');
+	}
+} catch (error) {
+	print('ERROR: Failed to create collections: ' + error);
+}
+
+// Create initial admin user with simple password hashing (not bcrypt)
+// Note: The application will handle proper password hashing
+try {
+	var adminEmail = process.env.MONGO_DB_ADMIN_USERNAME || 'admin@admin.com';
+	var adminPassword = process.env.MONGO_DB_ADMINUSER_PASSWORD || 'adminpassword';
+
+	// Check if admin user already exists
+	var existingAdmin = db.users.findOne({ email: adminEmail });
+	if (!existingAdmin) {
+		// Insert admin user - the application will handle password hashing on first login
+		var adminUser = {
+			firstName: 'Super',
+			lastName: 'Admin',
+			email: adminEmail,
+			password: adminPassword, // This will be hashed by the application on first use
+			roles: [],
+			isActive: true,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		};
+
+		db.users.insertOne(adminUser);
+		print('Successfully created admin user: ' + adminEmail);
+		print('IMPORTANT: Admin password will be hashed by the application on first login');
+	} else {
+		print('Admin user already exists: ' + adminEmail);
+	}
+} catch (error) {
+	print('ERROR: Failed to create admin user: ' + error);
+}
+
+print('MongoDB initialization completed successfully');
+print('Database: ' + process.env.MONGO_DB_DATABASE);
+print('Application user: ' + process.env.MONGO_DB_USERNAME);
+print('Admin email: ' + (process.env.MONGO_DB_ADMIN_USERNAME || 'admin@admin.com'));
 ```
 
 ### Enhanced NestJS Dockerfile
@@ -2839,13 +2949,11 @@ docker logs cloudflare-ddns
 # "Updated DNS record for your-domain.com from x.x.x.x to y.y.y.y"
 ```
 
-## GitHub Workflows
+## GitHub Actions CI/CD Pipeline
 
-// TODO
+Now that we have our complete NestJS application with MongoDB and Docker setup, let's create an automated CI/CD pipeline using GitHub Actions that builds and pushes our Docker images automatically.
 
-Now let's add a simple GitHub Actions workflow. We don't need the full enterprise CI/CD pipeline here - just something that shows good practices and validates that everything works.
-
-### Setting Up Basic CI
+### Setting Up the Workflow
 
 Create the workflows directory:
 
@@ -2853,7 +2961,176 @@ Create the workflows directory:
 mkdir -p .github/workflows
 ```
 
-Now let's create a simple but effective CI workflow at `.github/workflows/deploy.yml`:
+Create the main deployment workflow at `.github/workflows/deploy.yml`:
+
+```yaml
+name: create and push docker images
+
+on:
+    push:
+        branches:
+            - main
+            - dev
+
+jobs:
+    build-and-push:
+        runs-on: ubuntu-latest
+        env:
+            TAG: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to Docker Hub
+              uses: docker/login-action@v3
+              with:
+                  username: ${{ secrets.DOCKER_USERNAME }}
+                  password: ${{ secrets.DOCKER_PASSWORD }}
+
+            - name: Generate environment file
+              run: |
+                  cat << EOF > .env
+                  NODE_ENV=${{ env.TAG }}
+                  SERVER_PORT=3000
+                  MONGO_DB_PORT=27017
+                  MONGO_DB_USERNAME=${{ secrets.MONGO_DB_USERNAME }}
+                  MONGO_DB_PASSWORD=${{ secrets.MONGO_DB_PASSWORD }}
+                  MONGO_DB_HOSTNAME=mongodb
+                  MONGO_DB_DATABASE=${{ secrets.MONGO_DB_DATABASE }}
+                  MONGO_DB_ADMINUSER_PASSWORD=${{ secrets.MONGO_DB_ADMINUSER_PASSWORD }}
+                  MONGO_DB_ADMIN_USERNAME=${{ secrets.MONGO_DB_ADMIN_USERNAME }}
+                  MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}
+                  MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
+                  JWT_SECRET=${{ secrets.JWT_SECRET }}
+                  CLOUDFLARE_APIKEY=${{ secrets.CLOUDFLARE_APIKEY }}
+                  EOF
+
+            - name: Clear Docker system cache
+              run: |
+                  docker system prune -af
+                  docker builder prune -af
+
+            - name: Build and push Docker images
+              env:
+                  CLOUDFLARE_APIKEY: ${{ secrets.CLOUDFLARE_APIKEY }}
+                  NODE_ENV: ${{ env.TAG }}
+              run: |
+                  # Force remove any existing images with same tags
+                  docker compose -f docker-compose.yml -f docker-compose.${{ env.TAG }}.yml down --rmi all || true
+
+                  # Build with no cache and no build context reuse
+                  DOCKER_BUILDKIT=1 docker compose -f docker-compose.yml -f docker-compose.${{ env.TAG }}.yml build --no-cache --pull
+
+                  # Push the images
+                  docker compose -f docker-compose.yml -f docker-compose.${{ env.TAG }}.yml push
+```
+
+### Required GitHub Secrets
+
+You need to configure the following secrets in your GitHub repository (Settings → Secrets and variables → Actions):
+
+#### Docker Hub Credentials:
+
+- `DOCKER_USERNAME`: Your Docker Hub username
+- `DOCKER_PASSWORD`: Your Docker Hub password or access token
+
+#### MongoDB Configuration:
+
+- `MONGO_DB_USERNAME`: Application database username (e.g., `nestjs_user`)
+- `MONGO_DB_PASSWORD`: Application database password
+- `MONGO_DB_DATABASE`: Database name (e.g., `nestjs-server`)
+- `MONGO_DB_ADMIN_USERNAME`: Admin user email (e.g., `admin@admin.com`)
+- `MONGO_DB_ADMINUSER_PASSWORD`: Admin user password
+- `MONGO_INITDB_ROOT_USERNAME`: MongoDB root username (e.g., `root`)
+- `MONGO_INITDB_ROOT_PASSWORD`: MongoDB root password
+
+#### Application Secrets:
+
+- `JWT_SECRET`: JWT signing secret for authentication
+- `CLOUDFLARE_APIKEY`: Cloudflare API key for DDNS (optional)
+
+### How the Workflow Works
+
+1. **Trigger**: Runs on pushes to `main` (production) or `dev` (development) branches
+2. **Environment Detection**: Automatically sets `TAG` to `prod` for main branch, `dev` for others
+3. **Docker Setup**: Configures Docker Buildx for multi-platform builds
+4. **Authentication**: Logs into Docker Hub using stored secrets
+5. **Environment File**: Generates `.env` file with all required secrets
+6. **Cache Clearing**: Clears Docker cache to ensure clean builds
+7. **Build & Push**: Builds and pushes images with appropriate tags
+
+### Local Development vs CI/CD
+
+The workflow automatically handles different environments:
+
+- **Development** (`dev` branch): Builds development images with debugging enabled
+- **Production** (`main` branch): Builds production-optimized images
+
+### Testing the Pipeline
+
+1. **Set up secrets** in your GitHub repository
+2. **Push to dev branch** to test development builds:
+    ```bash
+    git checkout -b dev
+    git push origin dev
+    ```
+3. **Push to main branch** for production builds:
+    ```bash
+    git checkout main
+    git push origin main
+    ```
+
+### Monitoring Builds
+
+- Visit the **Actions** tab in your GitHub repository
+- Monitor build logs and deployment status
+- Images are automatically tagged and pushed to Docker Hub
+
+Your application now has a complete CI/CD pipeline that automatically builds and deploys your NestJS application with MongoDB whenever you push code changes!
+
+## Summary
+
+Congratulations! You've built a complete, production-ready NestJS application with:
+
+### 🔐 **Authentication & Authorization**
+
+- JWT-based authentication
+- Role-Based Access Control (RBAC)
+- Permission-based guards
+- Automatic user seeding
+
+### 🗄️ **Database**
+
+- MongoDB with Mongoose ODM
+- Proper user management and authentication
+- Automatic database initialization
+- Environment-based configuration
+
+### 🐳 **Containerization**
+
+- Multi-stage Docker builds
+- Docker Compose for different environments
+- Health checks and proper dependencies
+- Production-optimized containers
+
+### 🚀 **CI/CD Pipeline**
+
+- GitHub Actions workflow
+- Automated Docker builds and pushes
+- Environment-specific deployments
+- Secret management
+
+### 🔧 **Production Features**
+
+- Swagger API documentation
+- Comprehensive logging
+- Error handling
+- Security best practices
+
+Your application is now ready for production deployment with all the essential features of a modern web application!
 
 ```yaml
 name: create and push docker images
