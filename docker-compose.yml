@@ -38,6 +38,12 @@ services:
             - ./mongo:/docker-entrypoint-initdb.d:ro
         networks:
             - app-network
+        healthcheck:
+            test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 30s
 
 volumes:
     mongodb_data:
