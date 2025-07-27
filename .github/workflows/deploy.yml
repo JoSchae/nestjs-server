@@ -34,11 +34,11 @@ jobs:
                   MONGO_DB_PASSWORD=${{ secrets.MONGO_DB_PASSWORD }}
                   MONGO_DB_HOSTNAME=mongodb
                   MONGO_DB_DATABASE=${{ secrets.MONGO_DB_DATABASE }}
-                  MONGO_DB_ADMIN_USERNAME=admin@admin.com
+                  MONGO_DB_ADMIN_USERNAME=${{ secrets.MONGO_DB_ADMIN_USERNAME }}
                   MONGO_DB_ADMINUSER_PASSWORD=${{ secrets.MONGO_DB_ADMINUSER_PASSWORD }}
                   MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}
                   MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
-                  JWT_SECRET=production-jwt-secret-should-be-changed
+                  JWT_SECRET=${{ secrets.JWT_SECRET }}
                   JWT_EXPIRATION=3600s
                   EOF
 
@@ -49,7 +49,6 @@ jobs:
 
             - name: Build and push Docker images
               env:
-                  CLOUDFLARE_APIKEY: ${{ secrets.CLOUDFLARE_APIKEY }}
                   NODE_ENV: ${{ env.TAG }}
               run: |
                   # Force remove any existing images with same tags

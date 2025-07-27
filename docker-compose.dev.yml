@@ -1,23 +1,9 @@
 services:
     nestjs:
-        image: johannesschaefer/nestjs:dev
-        build:
-            target: dev
-            args:
-                - NODE_ENV=dev
         command: npm run start:debug
-    mongodb:
-        image: johannesschaefer/mongo:dev
+
     nginx:
-        image: johannesschaefer/nginx:dev
-        build:
-            context: .
-            dockerfile: ./dockerfiles/nginx/Dockerfile
-            args:
-                - NODE_ENV=dev
         ports:
             - '127.0.0.1:80:80'
         depends_on:
             - nestjs
-        networks:
-            - app-network
