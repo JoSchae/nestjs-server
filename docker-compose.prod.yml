@@ -1,20 +1,8 @@
 services:
     nestjs:
-        image: johannesschaefer/nestjs:prod
-        build:
-            target: prod
-            args:
-                - NODE_ENV=prod
         command: npm run start:prod
-    mongodb:
-        image: johannesschaefer/mongo:prod
+
     nginx:
-        image: johannesschaefer/nginx:prod
-        build:
-            context: .
-            dockerfile: ./dockerfiles/nginx/Dockerfile
-            args:
-                - NODE_ENV=prod
         volumes:
             - /etc/ssl/certs:/etc/ssl/certs:ro
             - /etc/ssl/private:/etc/ssl/private:ro
@@ -23,5 +11,3 @@ services:
             - '443:443'
         depends_on:
             - nestjs
-        networks:
-            - app-network

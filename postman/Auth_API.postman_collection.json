@@ -1,0 +1,98 @@
+{
+	"info": {
+		"name": "Auth API",
+		"description": "Authentication endpoints for the NestJS Server",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Login",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"superadmin@system.com\",\n  \"password\": \"SuperAdmin123!\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/login",
+					"host": ["{{baseUrl}}"],
+					"path": ["auth", "login"]
+				}
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"if (pm.response.code === 201) {",
+							"    const response = pm.response.json();",
+							"    pm.collectionVariables.set('token', response.access_token);",
+							"    ",
+							"    // Capture companyId from user data",
+							"    if (response.user && response.user.companyId) {",
+							"        pm.collectionVariables.set('companyId', response.user.companyId);",
+							"    }",
+							"    ",
+							"    pm.test('Login successful', function () {",
+							"        pm.expect(response.access_token).to.not.be.undefined;",
+							"    });",
+							"} else {",
+							"    pm.test('Login failed', function () {",
+							"        pm.expect(pm.response.code).to.be.oneOf([401, 404]);",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"response": [
+				{
+					"name": "Successful Login",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"superadmin@system.com\",\n  \"password\": \"SuperAdmin123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "login"]
+						}
+					},
+					"status": "Created",
+					"code": 201,
+					"_postman_previewlanguage": "json",
+					"header": [],
+					"cookie": [],
+					"body": "{\n  \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"user\": {\n    \"_id\": \"507f1f77bcf86cd799439011\",\n    \"email\": \"superadmin@system.com\",\n    \"firstName\": \"Super\",\n    \"lastName\": \"Admin\",\n    \"roles\": [...]\n  }\n}"
+				}
+			]
+		}
+	]
+}

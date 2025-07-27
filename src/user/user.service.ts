@@ -23,6 +23,7 @@ export class UserService {
 			.findOne({ email, isActive: true })
 			.populate({
 				path: 'roles',
+				model: 'Role',
 				populate: {
 					path: 'permissions',
 					model: 'Permission',

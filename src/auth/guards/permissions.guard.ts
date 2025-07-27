@@ -1,10 +1,12 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 import { UserService } from '../../user/user.service';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
+	private readonly logger = new Logger(PermissionsGuard.name);
+
 	constructor(
 		private reflector: Reflector,
 		private userService: UserService,
