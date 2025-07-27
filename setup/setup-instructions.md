@@ -4,13 +4,13 @@
 
 ### NestJS Setup
 
-We start pretty simple. Just follow the [official setup-guide of NestJS](https://docs.nestjs.com/first-steps 'NestJS First Steps'). I will use npm as package manager for simplicity, but you can of course choose whichever you want. We will also use the default Express-platform of NestJS instead of Fastify or others. I'm all for efficiency, but for now simplicity serves us well.
+We start pretty simple. Just follow the [official setup-guide of NestJS](https://docs.nestjs.com/first-steps 'NestJS First Steps'). I'll use npm as package manager for simplicity, but you can of course choose whichever you want. We'll also use the default Express-platform of NestJS instead of Fastify or others. I'm all for efficiency, but for now simplicity serves us well.
 
-After you created the project it ready for testing and playing around. You can reach it under localhost:3000.
+After you've created the project it's ready for testing and playing around. You can reach it under localhost:3000.
 
-There are several things every server needs to deal with. While not the most important, we will start with documentation. Yea, I know nobody likes it, which is why we will be just outsourcing that to Swagger.
+There are several things every server needs to deal with. While not the most important, we'll start with documentation. Yeah, I know nobody likes it, which is why we'll just outsource that to Swagger.
 
-If you don't know it, Swagger is a collection of tools to design and create REST-like APIs. And it gives us the tooles to not only do that very simple for whatever we will create, but also generates a static website we can serve for others. That way everyone will be able to easily understand and even test our mighty server.
+If you don't know it, Swagger is a collection of tools to design and create REST-like APIs. It gives us the tools to not only do that very simply for whatever we create, but also generates a static website we can serve for others. That way everyone will be able to easily understand and even test our mighty server.
 
 #### Swagger
 
@@ -43,9 +43,9 @@ async function bootstrap() {
 bootstrap();
 ```
 
-There are more things we could add, but those are the important ones for now. Later on we will add a way to use BearerAuthentication.
+There are more things we could add, but those are the important ones for now. Later on we'll add a way to use BearerAuthentication.
 
-(On a random sidenote and because this is the first time we are editting a file: I added a .editorconfig file. That way I have controle over the indents. Just two spaces is too small)
+(On a random sidenote and because this is the first time we're editing a file: I added a .editorconfig file. That way I have control over the indents. Just two spaces is too small)
 
 ```
 root = true
@@ -85,7 +85,7 @@ export class AppController {
 }
 ```
 
-And with this we are ready to look at our swagger api. Just run the server and go under localhost:3000/api:
+And with this we're ready to look at our swagger api. Just run the server and go under localhost:3000/api:
 
 ![Swagger Docu Example](./swagger-example.png)
 
@@ -95,13 +95,13 @@ With that out of the way, let's get to the meat of a server:
 
 ### Endpoints
 
-The most important functions are authentication and authorization. We don't want to just anyone having access to any data. We also want to be able to expose specific routes only to specific users/groups. I will go over Authentication, Authorization and Users in their chapters. But to be honest, they only work as one package. While were working on the different areas, the server will probably not start correctly.
+The most important functions are authentication and authorization. We don't want just anyone having access to any data. We also want to be able to expose specific routes only to specific users/groups. I'll go over Authentication, Authorization and Users in their chapters. But to be honest, they only work as one package. While we're working on the different areas, the server will probably not start correctly.
 
 So, without further ado, let's implement all three.
 
 #### Users
 
-For this we utilise the nestjs cli:
+For this we utilize the nestjs cli:
 
 ```bash
 nest generate module user
@@ -109,9 +109,9 @@ nest generate controller user
 nest generate service user
 ```
 
-This gives use a new user-folder with our files and already adds the controller, service and module to their respective files.
+This gives us a new user-folder with our files and already adds the controller, service and module to their respective files.
 
-The first thing we will create are our functions to create & update users and to return their data. For that we go into our **user.service.ts** file:
+The first thing we'll create are our functions to create & update users and to return their data. For that we go into our **user.service.ts** file:
 
 ```typescript
 import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
@@ -163,7 +163,7 @@ export class UserService {
 }
 ```
 
-This now has all the funcionality we need. It of course also needs some mockData:
+This now has all the functionality we need. It of course also needs some mockData:
 
 ```typescript
 const mockUserData = [
@@ -189,7 +189,7 @@ const mockUserData = [
 ```
 
 As you can see, we already need another service to correctly hash a user-password (we don't want anything saved in plain-text, do we?)
-But for now, we will finish up our User section. As you can see from the mockData, we expect a specific kind of object as User. So this is the next thing. We need one User interface that will also function as our Schema, and one login DTO (Data-Transfer-Object) to measure against the authentication we will be implementing later.
+But for now, we'll finish up our User section. As you can see from the mockData, we expect a specific kind of object as User. So this is the next thing. We need one User interface that will also function as our Schema, and one login DTO (Data-Transfer-Object) to measure against the authentication we'll be implementing later.
 
 ```bash
 mkdir ./src/user/model
@@ -233,7 +233,7 @@ export class User {
 
 As you can see, we also already decorated the variables with some swagger. This will also just automatically be now available in our /api endpoint.
 
-Btw, you get a whole setup of something similar with
+By the way, you get a whole setup of something similar with
 
 ```bash
 nest generate resource test
@@ -360,9 +360,9 @@ The @Controller not only tells NestJS, that this is a controller, but also under
 
 The @Post/@Get/@Put/@Delete represents the next part of the URI and of course tell us what kind of API-Operation they expect.
 
-And lastly @UseGuards tells NestJS, that this route is protected by whatever guard we specify. In this case, we want to restrict the creation of user-objects to only users with admin priviliges. As we could see, our User-model has no "roles" variable or something similar. You'll have to implement that on your own, according to your needs and specifics. For the moment we'll just ask for one specific user.
+And lastly @UseGuards tells NestJS, that this route is protected by whatever guard we specify. In this case, we want to restrict the creation of user-objects to only users with admin privileges. As we could see, our User-model has no "roles" variable or something similar. You'll have to implement that on your own, according to your needs and specifics. For the moment we'll just ask for one specific user.
 
-Another thing to note is of course, that we log a lot of the functions, including tokens and user-data. You might don't want to do that in production-settings.
+Another thing to note is of course, that we log a lot of the functions, including tokens and user-data. You might not want to do that in production-settings.
 
 And with that, the only thing left to do is to include everything in our **user.module.ts**
 
@@ -458,9 +458,9 @@ export class AuthService {
 }
 ```
 
-There are a few important things to note about this service. Firstly, it needs a UserService, which means we have to not only include it somehow in our module, but also to export it from our **user.module.ts**. Next, we have two utility functions to generate and compare passwords.
-We are using bcrypt as a simple library to hash any password we are getting send. Nobody wants plain-text passwords saved anywhere. The important thing here is, that we are encrypting the passwords with a special key. That key is also used to decrypt passwords again, if we need to compare it.
-Lastly there is a function that generates our JWT for any user with access rights. That JWT is then the main authorization for other endpoints (See @BearerAuth() in **user.controller.ts**).
+There are a few important things to note about this service. First, it needs a UserService, which means we have to not only include it somehow in our module, but also to export it from our **user.module.ts**. Next, we have two utility functions to generate and compare passwords.
+We're using bcrypt as a simple library to hash any password we're getting sent. Nobody wants plain-text passwords saved anywhere. The important thing here is, that we're encrypting the passwords with a special key. That key is also used to decrypt passwords again, if we need to compare it.
+Lastly there's a function that generates our JWT for any user with access rights. That JWT is then the main authorization for other endpoints (See @BearerAuth() in **user.controller.ts**).
 
 The nestjs/jwtService comes from nestjs/jwt:
 
@@ -502,7 +502,7 @@ export class AuthController {
 }
 ```
 
-As we can see, it's a pretty simple endpoint. The only thing of note is the [guard](https://docs.nestjs.com/guards 'NestJS Guards') we are using (**local-auth.guard.ts**) and the skip decorator (**skipAuth.decorator.ts**). Other than those, we just call the service to get a JWT, IF the user passes the guard. Speaking of, we are now building our auth guards. First thing is to install [passport](https://docs.nestjs.com/recipes/passport 'NestJS Passport Integration') for nestjs:
+As we can see, it's a pretty simple endpoint. The only thing of note is the [guard](https://docs.nestjs.com/guards 'NestJS Guards') we're using (**local-auth.guard.ts**) and the skip decorator (**skipAuth.decorator.ts**). Other than those, we just call the service to get a JWT, IF the user passes the guard. Speaking of, we're now building our auth guards. First thing is to install [passport](https://docs.nestjs.com/recipes/passport 'NestJS Passport Integration') for nestjs:
 
 ```bash
 npm i @nestjs/passport passport passport-local
@@ -526,7 +526,7 @@ export class LocalAuthGuard extends AuthGuard('local') {
 }
 ```
 
-What we are doing, is to extend the AuthGuard passport provides for us. This enables us to handle any request and use any AuthStrategy we wish to use. You can see, that we are using a Strategy with the name 'local'. This is the default-name for any Strategy. Later on we'll also build a 'admin' and a 'jwt' Strategy. For now, we only need to know, that this 'handleRequest' also uses the validation method of AuthGuard according to the loaded Strategy:
+What we're doing, is to extend the AuthGuard passport provides for us. This enables us to handle any request and use any AuthStrategy we wish to use. You can see, that we're using a Strategy with the name 'local'. This is the default-name for any Strategy. Later on we'll also build a 'admin' and a 'jwt' Strategy. For now, we only need to know, that this 'handleRequest' also uses the validation method of AuthGuard according to the loaded Strategy:
 
 ```typescript
 import { Strategy } from 'passport-local';
@@ -551,7 +551,7 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
 
 As you can see, we're leveraging the auth.service to check a users email. While the name 'local' might be default, I still like to include it in the creation of this Strategy.
 
-The next thing we saw was a decorator named SkipAuth. I'll be skipping ahead a little for now. In short order, we'll create a JWTGuard, and register it globally for every route. But of course, you can't use a JWT for a route, that generates said JWT. Therefore we have to disable any guard we deem neccessary for this route. That's what **skipAuth.decorator.ts** is for:
+The next thing we saw was a decorator named SkipAuth. I'll be skipping ahead a little for now. In short order, we'll create a JWTGuard, and register it globally for every route. But of course, you can't use a JWT for a route, that generates said JWT. Therefore we have to disable any guard we deem necessary for this route. That's what **skipAuth.decorator.ts** is for:
 
 ```typescript
 import { SetMetadata } from '@nestjs/common';
@@ -560,7 +560,7 @@ export const IS_PUBLIC_KEY = 'isPublic';
 export const SkipAuth = () => SetMetadata(IS_PUBLIC_KEY, true);
 ```
 
-It's pretty simple. This decorator sets Metadata. In any given Strategy, we now can check for this metadata. For example, here is the code-snippet from our future JWTGuard:
+It's pretty simple. This decorator sets Metadata. In any given Strategy, we now can check for this metadata. For example, here's the code-snippet from our future JWTGuard:
 
 ```typescript
 const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [context.getHandler(), context.getClass()]);
@@ -569,11 +569,11 @@ if (isPublic) {
 }
 ```
 
-We are extracting the IS_PUBLIC_KEY variable from our context. If it's true (which happens, when the endpoint is decorated with @SkipAuth) we just return true, meaning that the user is authenticated to use this endpoint.
+We're extracting the IS_PUBLIC_KEY variable from our context. If it's true (which happens, when the endpoint is decorated with @SkipAuth) we just return true, meaning that the user is authenticated to use this endpoint.
 
 With that, we now would have a working authentication. We could use it to check our user endpoints and guard them with the LocalStrategy. But as mentioned, we want to check for BearerAuth (JWT), and we also want special permissions for admins (or any other role in the future). So, let's build it:
 
-Just as with the local guard, we need need a **jwtStrategy.ts** and a **jwt-auth.guard.ts**. But before we build our strategy, we of course also have to install the passport package
+Just as with the local guard, we need a **jwtStrategy.ts** and a **jwt-auth.guard.ts**. But before we build our strategy, we of course also have to install the passport package
 
 ```bash
 npm i passport-jwt
@@ -662,7 +662,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 ```
 
 Just as before, we check for an override from the metadata. If not, we check the JWT and extract the user object from it, using a secret constant.
-Now, this is important: You secret-constant should never be public and as sophisticated as you can make it. It's used to sign and, in this case, decode you JWT. For tutorial purposes, I included it as a hardcoded string in **constants.ts**
+Now, this is important: Your secret-constant should never be public and as sophisticated as you can make it. It's used to sign and, in this case, decode your JWT. For tutorial purposes, I included it as a hardcoded string in **constants.ts**
 
 ```typescript
 export const jwtConstants = {
@@ -670,9 +670,9 @@ export const jwtConstants = {
 };
 ```
 
-In a production-environment, this is a secret, that should be set by environment variables or a workflow (I'm using Github workflows for example. More regarding those in a later part of this tutorial).
+In a production-environment, this is a secret, that should be set by environment variables or a workflow (I'm using Github workflows for example. More regarding those later in this tutorial).
 
-Also, now is a perfect time to create util functions. We need a recouring way to extract the JWT from request header: **utils/request.util.ts**
+Also, now is a perfect time to create util functions. We need a recurring way to extract the JWT from request header: **utils/request.util.ts**
 
 ```typescript
 import { Request } from 'express';
@@ -683,7 +683,7 @@ export const extractTokenFromHeader = (request: Request): string | undefined => 
 };
 ```
 
-And there we go. We implemented a JWT guard to be used for anything we want. Only one guard left: A guard just for us, the Admin. Because we are the most important snowflakes :D
+And there we go. We implemented a JWT guard to be used for anything we want. Only one guard left: A guard just for us, the Admin. Because we're the most important snowflakes :D
 
 ```typescript
 import { ExtractJwt, Strategy } from 'passport-jwt';
@@ -741,7 +741,7 @@ export class AdminStrategy extends PassportStrategy(Strategy, 'admin') {
 }
 ```
 
-Just as before, we extend a strategy, this time with "admin". We're also (for now) only checking one thing: The email must be the admin-email. The admin-user will be created automatically the first time we spin up our server. We'll get to that in a later part.
+Just as before, we extend a strategy, this time with "admin". We're also (for now) only checking one thing: The email must be the admin-email. The admin-user will be created automatically the first time we spin up our server. We'll get to that later.
 
 Now that we have the strategy, we need the guard to extract and check the payload email against the admin email:
 
@@ -793,7 +793,7 @@ export class AdminAuthGuard extends AuthGuard('admin') {
 }
 ```
 
-Only thing left to do is to provide our strategys in our auth.module:
+Only thing left to do is to provide our strategies in our auth.module:
 
 ```typescript
 import { forwardRef, Module } from '@nestjs/common';
@@ -822,7 +822,7 @@ import { AdminStrategy } from './guards/adminStrategy';
 export class AuthModule {}
 ```
 
-Well, not quite. We also need something to put into our Database. And we spend so much time building everything to work with User-objects, it's hightime we tell MongoDB how to work with them. For that we first need the correct packages:
+Well, not quite. We also need something to put into our Database. And we spent so much time building everything to work with User-objects, it's high time we tell MongoDB how to work with them. For that we first need the correct packages:
 
 ```bash
 npm i @nestjs/mongoose mongoose @nestjs/config
@@ -3132,83 +3132,6 @@ Congratulations! You've built a complete, production-ready NestJS application wi
 
 Your application is now ready for production deployment with all the essential features of a modern web application!
 
-```yaml
-name: create and push docker images
+---
 
-on:
-    push:
-        branches:
-            - main
-            - dev
-
-jobs:
-    build-and-push:
-        runs-on: ubuntu-latest
-        env:
-            TAG: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v3
-
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
-
-            - name: Log in to Docker Hub
-              uses: docker/login-action@v3
-              with:
-                  username: ${{ secrets.DOCKER_USERNAME }}
-                  password: ${{ secrets.DOCKER_PASSWORD }}
-
-            - name: Generate environment file
-              run: |
-                  cat << EOF > .env
-                  NODE_ENV=${{ env.TAG }}
-                  SERVER_PORT=3000
-                  MONGO_DB_PORT=27017
-                  MONGO_DB_USERNAME=${{ secrets.MONGO_DB_USERNAME }}
-                  MONGO_DB_PASSWORD=${{ secrets.MONGO_DB_PASSWORD }}
-                  MONGO_DB_HOSTNAME=mongodb
-                  MONGO_DB_DATABASE=${{ secrets.MONGO_DB_DATABASE }}
-                  MONGO_DB_ADMINUSER_PASSWORD=${{ secrets.MONGO_DB_ADMINUSER_PASSWORD }}
-                  MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}
-                  MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
-                  CLOUDFLARE_APIKEY=${{ secrets.CLOUDFLARE_APIKEY }}
-                  EOF
-
-            - name: Build and push Docker images
-              env:
-                  CLOUDFLARE_APIKEY: ${{ secrets.CLOUDFLARE_APIKEY }}
-                  NODE_ENV: ${{ env.TAG }}
-              run: |
-                  docker compose -f docker-compose.yml -f docker-compose.${{ env.TAG }}.yml build --no-cache
-                  docker compose -f docker-compose.yml -f docker-compose.${{ env.TAG }}.yml push
-```
-
-Pretty straightforward! This workflow will:
-
-- Run your tests with a real MongoDB instance
-- Build your application to make sure it compiles
-- Test that all your Docker images build correctly
-
-### Package.json Scripts
-
-Make sure you have these scripts in your `package.json` (most should already be there from when we set up NestJS):
-
-```json
-{
-	"scripts": {
-		"build": "nest build",
-		"format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-		"start": "nest start",
-		"start:dev": "nest start --watch",
-		"start:debug": "nest start --debug --watch",
-		"start:prod": "node dist/main",
-		"lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-		"test": "jest",
-		"test:watch": "jest --watch",
-		"test:cov": "jest --coverage",
-		"test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-		"test:e2e": "jest --config ./test/jest-e2e.json"
-	}
-}
-```
+**Happy coding!** 🚀
