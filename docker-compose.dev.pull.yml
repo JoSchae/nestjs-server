@@ -1,16 +1,7 @@
 services:
     nestjs:
-        image: johannesschaefer/nestjs:${TAG:-dev}
-        build:
-            context: .
-            dockerfile: ./dockerfiles/nestjs/Dockerfile
-            target: dev
-            args:
-                - NODE_ENV=dev
+        image: johannesschaefer/nestjs:dev
         command: npm run start:debug
-        volumes:
-            - .:/usr/src/app
-            - /usr/src/app/node_modules
         container_name: nestjs
         env_file:
             - .env
@@ -21,10 +12,7 @@ services:
             - app-network
 
     mongodb:
-        image: johannesschaefer/mongo:${TAG:-dev}
-        build:
-            context: .
-            dockerfile: ./dockerfiles/mongodb/Dockerfile
+        image: johannesschaefer/mongo:dev
         container_name: mongodb
         env_file:
             - .env
@@ -32,11 +20,6 @@ services:
             - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
             - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
             - MONGO_INITDB_DATABASE=${MONGO_DB_DATABASE}
-            - MONGO_DB_USERNAME=${MONGO_DB_USERNAME}
-            - MONGO_DB_PASSWORD=${MONGO_DB_PASSWORD}
-            - MONGO_DB_DATABASE=${MONGO_DB_DATABASE}
-            - MONGO_DB_ADMIN_USERNAME=${MONGO_DB_ADMIN_USERNAME}
-            - MONGO_DB_ADMINUSER_PASSWORD=${MONGO_DB_ADMINUSER_PASSWORD}
         volumes:
             - mongodb_data:/data/db/
             - mongodb_log:/var/log/mongodb/
@@ -51,17 +34,14 @@ services:
             start_period: 30s
 
     nginx:
-        image: johannesschaefer/nginx:${TAG:-dev}
-        build:
-            context: .
-            dockerfile: ./dockerfiles/nginx/Dockerfile
-            args:
-                - NODE_ENV=dev
+        image: johannesschaefer/nginx:dev
         container_name: nginx
-        depends_on:
-            - nestjs
+        ports:
+            - '127.0.0.1:80:80'
         networks:
             - app-network
+        depends_on:
+            - nestjs
 
 volumes:
     mongodb_data:
