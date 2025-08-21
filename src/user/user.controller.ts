@@ -15,6 +15,8 @@ import {
 import { UserService } from './user.service';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { User } from 'src/user/model/user.model';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import { RequirePermissions } from 'src/auth/decorators/permissions.decorator';
 
@@ -28,20 +30,19 @@ export class UserController {
 	@UseGuards(PermissionsGuard)
 	@RequirePermissions('user:create')
 	@ApiOperation({ summary: 'Create a new user' })
-	@ApiBody({ description: 'User data', type: User })
+	@ApiBody({ description: 'User data', type: CreateUserDto })
 	@ApiResponse({ status: 201, description: 'The user has been successfully created.' })
 	@ApiResponse({ status: 401, description: 'User unauthorized' })
 	@ApiResponse({ status: 409, description: 'User already exists.' })
-	public async create(@Request() req: any, @Response() res): Promise<any> {
-		this.logger.log(`Creating user ${JSON.stringify(req.body)}`);
-		const newUser = req.body;
+	public async create(@Body() createUserDto: CreateUserDto, @Response() res): Promise<any> {
+		this.logger.log(`Creating user ${JSON.stringify(createUserDto)}`);
 		try {
-			const query = { email: newUser.email };
+			const query = { email: createUserDto.email };
 			const isUser = await this.usersService.findOneByEmail(query);
 			if (!!isUser) {
 				throw new ConflictException('User already exists');
 			}
-			const user = await this.usersService.create(newUser);
+			const user = await this.usersService.create(createUserDto);
 			const response = user.toObject();
 			delete response.password;
 			return res.status(201).json(response);
@@ -114,18 +115,23 @@ export class UserController {
 	@UseGuards(PermissionsGuard)
 	@RequirePermissions('user:update')
 	@ApiOperation({ summary: 'Update user profile' })
+	@ApiBody({ description: 'User update data', type: UpdateUserDto })
 	@ApiBearerAuth()
 	@ApiResponse({ status: 200, description: 'The user profile has been successfully updated.' })
 	@ApiResponse({ status: 401, description: 'Unauthorized.' })
 	@ApiResponse({ status: 500, description: 'Internal server error.' })
-	public async updateProfile(@Request() req: any, @Response() res): Promise<any> {
+	public async updateProfile(
+		@Request() req: any,
+		@Body() updateUserDto: UpdateUserDto,
+		@Response() res,
+	): Promise<any> {
 		this.logger.log(`Updating user profile...}`);
 		try {
 			const authHeader = req.headers.authorization;
 			const token = authHeader ? authHeader.split(' ')[1] : null;
 			this.logger.log(`JWT Token: ${token}`);
 			this.logger.log(`Updating user profile ${JSON.stringify(req.user)}`);
-			const user = await this.usersService.findOneAndUpdate({ email: req.user.email }, req.body);
+			const user = await this.usersService.findOneAndUpdate({ email: req.user.email }, updateUserDto);
 			return res.status(200).json(user);
 		} catch (error) {
 			this.logger.error(`Error updating user profile ${error}`);
