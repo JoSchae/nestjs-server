@@ -41,8 +41,8 @@ http {
         server_name schaeferdevelopment.tech;
 
         # SSL configuration
-        ssl_certificate /etc/ssl/certs/cloudflare-origin.pem;
-        ssl_certificate_key /etc/ssl/private/cloudflare-origin.key;
+        ssl_certificate /etc/letsencrypt/live/schaeferdevelopment.tech/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/schaeferdevelopment.tech/privkey.pem;
         ssl_protocols TLSv1.2 TLSv1.3;
         ssl_prefer_server_ciphers on;
         ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES256-GCM-SHA384;
