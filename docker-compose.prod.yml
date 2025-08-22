@@ -16,7 +16,8 @@ services:
             args:
                 - NODE_ENV=prod
         volumes:
-            - /etc/letsencrypt:/etc/letsencrypt:ro
+            - /etc/ssl/certs:/etc/ssl/certs:ro
+            - /etc/ssl/private:/etc/ssl/private:ro
         ports:
             - '80:80'
             - '443:443'
