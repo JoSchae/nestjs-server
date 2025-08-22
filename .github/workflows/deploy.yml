@@ -37,7 +37,8 @@ jobs:
                   MONGO_DB_ADMINUSER_PASSWORD=${{ secrets.MONGO_DB_ADMINUSER_PASSWORD }}
                   MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}
                   MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
-                  CLOUDFLARE_APIKEY=${{ secrets.CLOUDFLARE_APIKEY }}
+                  JWT_SECRET=production-jwt-secret-should-be-changed
+                  JWT_EXPIRATION=3600s
                   EOF
 
             - name: Clear Docker system cache

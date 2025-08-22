@@ -1128,64 +1128,53 @@ COPY ./nginx/nginx.${NODE_ENV}.conf /etc/nginx/nginx.conf
 
 ### Production Features
 
-- **SSL/TLS termination** with Let's Encrypt certificates
+- **SSL/TLS termination** with Cloudflare Origin certificates
 - **HTTP/2 support** for improved performance
 - **Security headers** for protection against common attacks
 - **Gzip compression** for reduced bandwidth usage
 - **Connection keep-alive** for better performance
 - **Automatic HTTP to HTTPS redirect**
+- **Cloudflare Real IP configuration** for accurate visitor IPs
 
-## Cloudflare DDNS Integration
+## Cloudflare Tunnel Integration
 
-### Dynamic DNS Updates
+### Secure Connectivity Without Port Forwarding
 
-The application includes automatic DNS updates for dynamic IP addresses using Cloudflare's API.
+The application uses Cloudflare Tunnel to provide secure connectivity without requiring port forwarding or exposing your origin server directly to the internet.
 
-#### Cloudflare DDNS Dockerfile
+#### Benefits of Cloudflare Tunnel
 
-```dockerfile
-FROM oznu/cloudflare-ddns:latest
-ARG CLOUDFLARE_APIKEY
-ENV API_KEY=${CLOUDFLARE_APIKEY}
-ENV CLOUDFLARE_APIKEY=${CLOUDFLARE_APIKEY}
+- **No port forwarding required** - bypasses ISP restrictions
+- **Enhanced security** - no open ports on your server
+- **Automatic SSL/TLS** - Cloudflare handles SSL termination
+- **Better performance** - Cloudflare's global CDN
+- **DDoS protection** - built-in protection
+
+#### Setup Process
+
+1. **Install cloudflared** on your server
+2. **Create and configure tunnel** with your domain
+3. **Update DNS records** to point to tunnel endpoint
+4. **Configure nginx** for Cloudflare compatibility
+
+For detailed setup instructions, see: `cloudflare-tunnel-setup.md`
+
+#### nginx Configuration for Cloudflare
+
+The application includes Cloudflare-optimized nginx configuration with:
+
+- **Real IP detection** for accurate visitor logs
+- **Cloudflare IP ranges** for trusted proxy configuration
+- **Security headers** optimized for Cloudflare
+- **SSL certificate chain** for Full (strict) mode
+
+```nginx
+# Cloudflare Real IP configuration
+set_real_ip_from 173.245.48.0/20;
+set_real_ip_from 103.21.244.0/22;
+# ... (all Cloudflare IP ranges)
+real_ip_header CF-Connecting-IP;
 ```
-
-#### Production Configuration
-
-In **docker-compose.prod.yml**, the Cloudflare DDNS service is configured:
-
-```yaml
-cloudflare-ddns:
-    image: johannesschaefer/cloudflare-ddns:prod
-    build:
-        context: .
-        dockerfile: ./dockerfiles/cloudflare-ddns/Dockerfile
-        args:
-            - CLOUDFLARE_APIKEY=${CLOUDFLARE_APIKEY}
-    container_name: cloudflare-ddns
-    restart: always
-    environment:
-        - ZONE=schaeferdevelopment.tech
-        - PROXIED=true
-        - PUID=1000
-        - PGID=1000
-    networks:
-        - app-network
-```
-
-### Environment Variables
-
-Add to your `.env` file:
-
-```env
-CLOUDFLARE_APIKEY=your-cloudflare-api-key
-```
-
-The DDNS service automatically:
-
-- Updates A records when IP changes
-- Enables Cloudflare proxy for additional protection
-- Runs continuously with restart policies
 
 ## CI/CD with GitHub Actions
 
@@ -1237,7 +1226,6 @@ jobs:
                   MONGO_DB_ADMINUSER_PASSWORD=${{ secrets.MONGO_DB_ADMINUSER_PASSWORD }}
                   MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}
                   MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
-                  CLOUDFLARE_APIKEY=${{ secrets.CLOUDFLARE_APIKEY }}
                   EOF
 
             - name: Clear Docker system cache
@@ -1282,7 +1270,6 @@ MONGO_DB_DATABASE=your-database-name
 MONGO_DB_ADMINUSER_PASSWORD=admin-password
 MONGO_INITDB_ROOT_USERNAME=mongo-root-username
 MONGO_INITDB_ROOT_PASSWORD=mongo-root-password
-CLOUDFLARE_APIKEY=your-cloudflare-api-key
 ```
 
 #### Deployment Environments
@@ -1297,7 +1284,7 @@ CLOUDFLARE_APIKEY=your-cloudflare-api-key
 
 - **Purpose**: Live production environment
 - **Access**: Public with SSL (schaeferdevelopment.tech)
-- **Features**: Optimized builds, SSL/TLS, security headers, Cloudflare DDNS
+- **Features**: Optimized builds, SSL/TLS, security headers, Cloudflare Tunnel
 
 ### Multi-Environment Docker Compose
 
@@ -1362,9 +1349,10 @@ services:
             - nestjs
         networks:
             - app-network
-    cloudflare-ddns:
-        image: johannesschaefer/cloudflare-ddns:prod
-        # ... (cloudflare config as shown above)
+
+networks:
+    app-network:
+        driver: bridge
 ```
 
 ## Complete File Reference
@@ -2095,7 +2083,7 @@ Production environment configuration:
 
 - Optimized builds
 - SSL/TLS support
-- Cloudflare DDNS integration
+- Cloudflare Tunnel integration
 - Public port exposure
 
 #### **docker-compose.local.yml**
@@ -2136,16 +2124,6 @@ ARG NODE_ENV
 COPY ./nginx/nginx.${NODE_ENV}.conf /etc/nginx/nginx.conf
 ```
 
-#### **dockerfiles/cloudflare-ddns/Dockerfile**
-
-Cloudflare DDNS container:
-
-```dockerfile
-FROM oznu/cloudflare-ddns:latest
-ARG CLOUDFLARE_APIKEY
-ENV API_KEY=${CLOUDFLARE_APIKEY}
-```
-
 ### Nginx Configuration
 
 #### **nginx/nginx.dev.conf**
@@ -2160,11 +2138,21 @@ Development nginx configuration:
 
 Production nginx configuration:
 
-- SSL/TLS termination with Let's Encrypt
+- SSL/TLS termination with Cloudflare Origin certificates
+- Cloudflare Real IP configuration
 - Security headers (HSTS, CSP, etc.)
 - HTTP/2 support
 - Gzip compression
 - HTTP to HTTPS redirect
+
+#### **nginx/nginx.prod.cloudflare.conf**
+
+Cloudflare-optimized nginx configuration:
+
+- Real IP detection from Cloudflare
+- All Cloudflare IP ranges configured
+- SSL certificate chain for Full (strict) mode
+- Enhanced security headers
 
 ### MongoDB Setup
 
@@ -2326,8 +2314,6 @@ nestjs-server/
 │   ├── launch.json              # Debug configuration
 │   └── settings.json            # Workspace settings
 ├── dockerfiles/
-│   ├── cloudflare-ddns/
-│   │   └── Dockerfile           # DDNS container
 │   ├── mongodb/
 │   │   └── Dockerfile           # MongoDB with init scripts
 │   ├── nestjs/
@@ -2338,11 +2324,12 @@ nestjs-server/
 │   └── init-mongodb.js          # MongoDB initialization script
 ├── nginx/
 │   ├── nginx.dev.conf           # Development nginx config
-│   └── nginx.prod.conf          # Production nginx with SSL
+│   ├── nginx.prod.conf          # Production nginx config
+│   └── nginx.prod.cloudflare.conf # Cloudflare-optimized config
 ├── setup/
-│   ├── setup-instructions.md    # Original tutorial
 │   ├── setup-instructions-actual.md # This comprehensive guide
 │   └── swagger-example.png      # Swagger UI screenshot
+├── cloudflare-tunnel-setup.md   # Cloudflare Tunnel configuration guide
 ├── src/
 │   ├── auth/                    # Authentication module
 │   │   ├── decorators/
@@ -2431,5 +2418,3 @@ nestjs-server/
 ├── tsconfig.build.json          # TypeScript build config
 └── tsconfig.json               # TypeScript configuration
 ```
-
-This comprehensive file reference documents every single file in your repository, explaining its purpose, content, and how it fits into the overall architecture. The codebase represents a production-ready NestJS application with complete RBAC, MongoDB integration, Docker containerization, nginx reverse proxy, Cloudflare DDNS, and automated CI/CD deployment.
