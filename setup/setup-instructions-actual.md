@@ -1010,7 +1010,61 @@ http {
 }
 ```
 
+
 #### Production Configuration
+
+The **nginx.prod.conf** is optimized for Cloudflare Tunnel and uses Cloudflare Origin CA certificates for SSL/TLS. You must create and mount these certificates for secure production deployment.
+
+### Cloudflare Origin CA Certificate Setup
+
+1. Go to your Cloudflare dashboard → SSL/TLS → Origin Server.
+2. Create a new Origin Certificate for your domain (e.g., schaeferdevelopment.tech).
+3. Download the certificate and key files.
+4. Place them on your host system at:
+	- `/etc/ssl/certs/cloudflare-origin-fullchain.pem`
+	- `/etc/ssl/private/cloudflare-origin.key`
+5. Ensure permissions allow Nginx to read these files (read-only recommended).
+
+### Docker Compose Certificate Mounts
+
+In production, the Nginx container mounts these files as follows (see `docker-compose.prod.pull.yml`):
+
+```yaml
+	 volumes:
+		- /etc/ssl/certs/cloudflare-origin-fullchain.pem:/etc/ssl/certs/cloudflare-origin-fullchain.pem:ro
+		- /etc/ssl/private/cloudflare-origin.key:/etc/ssl/private/cloudflare-origin.key:ro
+```
+
+### Cloudflare Tunnel Setup
+
+To expose your service securely, set up a Cloudflare Tunnel:
+
+1. Install `cloudflared` on your host: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/
+2. Authenticate with your Cloudflare account: `cloudflared login`
+3. Create and run a tunnel for your domain:
+	```bash
+	cloudflared tunnel create nestjs-server-tunnel
+	cloudflared tunnel route dns nestjs-server-tunnel schaeferdevelopment.tech
+	cloudflared tunnel run nestjs-server-tunnel
+	```
+4. Ensure your DNS records in Cloudflare point to the tunnel.
+
+### Nginx Configuration for Cloudflare
+
+Nginx is preconfigured for Cloudflare compatibility in `nginx/nginx.prod.conf` and `nginx/nginx.prod.cloudflare.conf`:
+
+- Uses the mounted Origin CA cert/key for SSL
+- Accepts real IP headers from Cloudflare
+- Optimized security headers and gzip
+
+Example SSL section:
+
+```nginx
+	 ssl_certificate /etc/ssl/certs/cloudflare-origin-fullchain.pem;
+	 ssl_certificate_key /etc/ssl/private/cloudflare-origin.key;
+```
+
+---
 
 The **nginx.prod.conf** includes SSL/TLS, security headers, and production optimizations:
 
