@@ -32,10 +32,34 @@ services:
             - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
             - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
             - MONGO_INITDB_DATABASE=${MONGO_DB_DATABASE}
+            - MONGO_DB_USERNAME=${MONGO_DB_USERNAME}
+            - MONGO_DB_PASSWORD=${MONGO_DB_PASSWORD}
+            - MONGO_DB_DATABASE=${MONGO_DB_DATABASE}
+            - MONGO_DB_ADMIN_USERNAME=${MONGO_DB_ADMIN_USERNAME}
+            - MONGO_DB_ADMINUSER_PASSWORD=${MONGO_DB_ADMINUSER_PASSWORD}
         volumes:
             - mongodb_data:/data/db/
             - mongodb_log:/var/log/mongodb/
             - ./mongo:/docker-entrypoint-initdb.d:ro
+        networks:
+            - app-network
+        healthcheck:
+            test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 30s
+
+    nginx:
+        image: johannesschaefer/nginx:${TAG:-dev}
+        build:
+            context: .
+            dockerfile: ./dockerfiles/nginx/Dockerfile
+            args:
+                - NODE_ENV=dev
+        container_name: nginx
+        depends_on:
+            - nestjs
         networks:
             - app-network
 

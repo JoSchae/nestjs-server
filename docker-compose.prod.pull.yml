@@ -1,0 +1,56 @@
+services:
+    nestjs:
+        image: johannesschaefer/nestjs:prod
+        command: npm run start:prod
+        container_name: nestjs
+        env_file:
+            - .env
+        depends_on:
+            mongodb:
+                condition: service_healthy
+        networks:
+            - app-network
+
+    mongodb:
+        image: johannesschaefer/mongo:prod
+        container_name: mongodb
+        env_file:
+            - .env
+        environment:
+            - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+            - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+            - MONGO_INITDB_DATABASE=${MONGO_DB_DATABASE}
+        volumes:
+            - mongodb_data:/data/db/
+            - mongodb_log:/var/log/mongodb/
+            - ./mongo:/docker-entrypoint-initdb.d:ro
+        networks:
+            - app-network
+        healthcheck:
+            test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 30s
+
+    nginx:
+        image: johannesschaefer/nginx:prod
+        container_name: nginx
+        ports:
+            - '80:80'
+            - '443:443'
+        volumes:
+            - /etc/ssl/certs/cloudflare-origin-fullchain.pem:/etc/ssl/certs/cloudflare-origin-fullchain.pem:ro
+            - /etc/ssl/private/cloudflare-origin.key:/etc/ssl/private/cloudflare-origin.key:ro
+        networks:
+            - app-network
+        depends_on:
+            - nestjs
+
+volumes:
+    mongodb_data:
+    mongodb_log:
+
+networks:
+    app-network:
+        driver: bridge
