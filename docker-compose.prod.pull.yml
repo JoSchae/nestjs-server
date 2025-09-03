@@ -40,7 +40,8 @@ services:
             - '80:80'
             - '443:443'
         volumes:
-            - /etc/letsencrypt:/etc/letsencrypt:ro
+            - /etc/ssl/certs/cloudflare-origin-fullchain.pem:/etc/ssl/certs/cloudflare-origin-fullchain.pem:ro
+            - /etc/ssl/private/cloudflare-origin.key:/etc/ssl/private/cloudflare-origin.key:ro
         networks:
             - app-network
         depends_on:
