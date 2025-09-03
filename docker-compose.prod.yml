@@ -1,5 +1,10 @@
 services:
     nestjs:
+        image: johannesschaefer/nestjs:prod
+        build:
+            target: prod
+            args:
+                - NODE_ENV=prod
         command: npm run start:prod
 
     nginx:
