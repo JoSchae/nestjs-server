@@ -102,6 +102,7 @@
 									"if (pm.response.code === 201) {",
 									"    const response = pm.response.json();",
 									"    pm.collectionVariables.set('token', response.access_token);",
+									"    pm.environment.set('token', response.access_token);",
 									"    ",
 									"    pm.test('Login successful', function () {",
 									"        pm.expect(response.access_token).to.not.be.undefined;",
