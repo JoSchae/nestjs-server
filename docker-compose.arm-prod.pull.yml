@@ -1,0 +1,12 @@
+services:
+    nestjs:
+        image: johannesschaefer/nestjs-server:arm-prod
+        pull_policy: always
+        
+    mongodb:
+        image: johannesschaefer/mongodb:arm-prod
+        pull_policy: always
+        
+    nginx:
+        image: johannesschaefer/nginx:arm-prod
+        pull_policy: always

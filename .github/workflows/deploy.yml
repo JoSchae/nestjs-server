@@ -9,14 +9,26 @@ on:
 jobs:
     build-and-push:
         runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                platform: [amd64, arm64]
         env:
             TAG: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+            ARM_TAG: ${{ github.ref == 'refs/heads/main' && 'arm-prod' || 'arm-dev' }}
+            PLATFORM_TAG: ${{ matrix.platform == 'arm64' && (github.ref == 'refs/heads/main' && 'arm-prod' || 'arm-dev') || (github.ref == 'refs/heads/main' && 'prod' || 'dev') }}
         steps:
             - name: Checkout code
               uses: actions/checkout@v3
 
+            - name: Set up QEMU for cross-platform builds
+              uses: docker/setup-qemu-action@v3
+              with:
+                  platforms: linux/amd64,linux/arm64
+
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v3
+              with:
+                  platforms: linux/amd64,linux/arm64
 
             - name: Log in to Docker Hub
               uses: docker/login-action@v3
@@ -49,15 +61,39 @@ jobs:
                   docker system prune -af
                   docker builder prune -af
 
-            - name: Build and push Docker images
+            - name: Build and push Docker images for ${{ matrix.platform }}
               env:
                   NODE_ENV: ${{ env.TAG }}
+                  DOCKER_BUILDKIT: 1
+                  PLATFORM: linux/${{ matrix.platform }}
+                  IMAGE_TAG: ${{ env.PLATFORM_TAG }}
               run: |
+                  # Set platform-specific environment variables
+                  export PLATFORM_ARCH=${{ matrix.platform }}
+                  export TARGET_TAG=${{ env.PLATFORM_TAG }}
+                  
                   # Force remove any existing images with same tags
                   docker compose -f docker-compose.yml -f docker-compose.${{ env.TAG }}.yml down --rmi all || true
 
-                  # Build with no cache and no build context reuse
-                  DOCKER_BUILDKIT=1 docker compose -f docker-compose.yml -f docker-compose.${{ env.TAG }}.yml build --no-cache --pull
+                  # Build for specific platform with custom tags
+                  docker buildx build \
+                    --platform linux/${{ matrix.platform }} \
+                    --build-arg NODE_ENV=${{ env.TAG }} \
+                    --tag ${{ secrets.DOCKER_USERNAME }}/nestjs-server:${{ env.PLATFORM_TAG }} \
+                    --file dockerfiles/nestjs/Dockerfile \
+                    --push \
+                    .
 
-                  # Push the images
-                  docker compose -f docker-compose.yml -f docker-compose.${{ env.TAG }}.yml push
+                  docker buildx build \
+                    --platform linux/${{ matrix.platform }} \
+                    --tag ${{ secrets.DOCKER_USERNAME }}/mongodb:${{ env.PLATFORM_TAG }} \
+                    --file dockerfiles/mongodb/Dockerfile \
+                    --push \
+                    .
+
+                  docker buildx build \
+                    --platform linux/${{ matrix.platform }} \
+                    --tag ${{ secrets.DOCKER_USERNAME }}/nginx:${{ env.PLATFORM_TAG }} \
+                    --file dockerfiles/nginx/Dockerfile \
+                    --push \
+                    .
