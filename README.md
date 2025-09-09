@@ -57,24 +57,52 @@ Header: Authorization: Bearer {token}
 
 ## Docker Setup
 
+### Standard Deployment (x86_64/AMD64)
+
 ```bash
 # Development
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 # Production
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+```
 
-# helpfull aliases
+### ARM Deployment (Raspberry Pi 3/4/5, ARM servers)
+
+```bash
+# ARM Development
+docker compose -f docker-compose.yml -f docker-compose.arm-dev.yml up
+
+# ARM Production
+docker compose -f docker-compose.yml -f docker-compose.arm-prod.yml up
+
+# Pull latest ARM images first (recommended)
+docker compose -f docker-compose.yml -f docker-compose.arm-dev.yml -f docker-compose.arm-dev.pull.yml pull
+docker compose -f docker-compose.yml -f docker-compose.arm-prod.yml -f docker-compose.arm-prod.pull.yml pull
+```
+
+### Helpful Aliases
+
+```bash
 alias dockerdown="sudo docker compose down --remove-orphans"
 alias prunedocker="sudo docker system prune -a -f && sudo docker volume rm nestjs-server_mongodb_data nestjs-server_mongodb_log"
 alias dockerstats="gnome-terminal -- bash -c 'docker stats; exec bash'"
+
+# Standard x86_64 functions
 function nestjspull() {
-    sudo docker pull <docker-repository>/nestjs:"$1" && sudo docker pull <docker-repository>/mongo:"$1" && sudo docker pull <docker-repository>/nginx:"$1" && sudo docker pull <docker-repository>/cloudflare-ddns:"$1"
+    sudo docker pull <docker-repository>/nestjs-server:"$1" && sudo docker pull <docker-repository>/mongodb:"$1" && sudo docker pull <docker-repository>/nginx:"$1"
 }
 function nestjsup() {
     sudo docker compose down --remove-orphans && docker compose -f docker-compose.yml -f docker-compose."${1}".yml up
 }
 
+# ARM-specific functions
+function nestjspullarm() {
+    sudo docker pull <docker-repository>/nestjs-server:"arm-$1" && sudo docker pull <docker-repository>/mongodb:"arm-$1" && sudo docker pull <docker-repository>/nginx:"arm-$1"
+}
+function nestjsuparm() {
+    sudo docker compose down --remove-orphans && docker compose -f docker-compose.yml -f docker-compose.arm-"${1}".yml up
+}
 ```
 
 ## Project Structure

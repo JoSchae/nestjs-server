@@ -1,0 +1,18 @@
+services:
+    nestjs:
+        image: johannesschaefer/nestjs-server:arm-prod
+        command: npm run start:prod
+
+    mongodb:
+        image: johannesschaefer/mongodb:arm-prod
+
+    nginx:
+        image: johannesschaefer/nginx:arm-prod
+        volumes:
+            - /etc/ssl/certs:/etc/ssl/certs:ro
+            - /etc/ssl/private:/etc/ssl/private:ro
+        ports:
+            - '80:80'
+            - '443:443'
+        depends_on:
+            - nestjs

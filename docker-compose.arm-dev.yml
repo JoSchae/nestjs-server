@@ -1,0 +1,14 @@
+services:
+    nestjs:
+        image: johannesschaefer/nestjs-server:arm-dev
+        command: npm run start:debug
+
+    mongodb:
+        image: johannesschaefer/mongodb:arm-dev
+
+    nginx:
+        image: johannesschaefer/nginx:arm-dev
+        ports:
+            - '127.0.0.1:80:80'
+        depends_on:
+            - nestjs
