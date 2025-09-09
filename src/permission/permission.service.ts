@@ -194,6 +194,20 @@ export class PermissionService {
 				resource: PermissionResource.PERMISSION,
 			},
 
+			// Metrics permissions
+			{
+				name: 'metrics:read',
+				description: 'Read system metrics',
+				action: PermissionAction.READ,
+				resource: PermissionResource.METRICS,
+			},
+			{
+				name: 'metrics:manage',
+				description: 'Full metrics access',
+				action: PermissionAction.MANAGE,
+				resource: PermissionResource.METRICS,
+			},
+
 			// Super admin permission
 			{
 				name: 'all:manage',
