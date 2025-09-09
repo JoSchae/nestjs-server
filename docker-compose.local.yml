@@ -8,14 +8,20 @@ services:
             - '3000:3000'
             - '9229:9229' # Debug port
         environment:
-            - NODE_ENV=development
-            - MONGO_DB_HOSTNAME=mongodb
+            - SERVER_PORT=3000
             - MONGO_DB_PORT=27017
-            - MONGO_DB_USERNAME=${MONGO_DB_USERNAME}
-            - MONGO_DB_PASSWORD=${MONGO_DB_PASSWORD}
-            - MONGO_DB_DATABASE=${MONGO_DB_DATABASE}
-            - JWT_SECRET=${JWT_SECRET}
-            - JWT_EXPIRATION=${JWT_EXPIRATION}
+            - MONGO_DB_USERNAME=nestjs_user
+            - MONGO_DB_PASSWORD=nestjs_password
+            - MONGO_DB_HOSTNAME=mongodb
+            - MONGO_DB_DATABASE=nestjs-server
+            - MONGO_DB_ADMIN_USERNAME=admin@admin.com
+            - MONGO_DB_ADMINUSER_PASSWORD=adminpassword
+            - MONGO_INITDB_ROOT_USERNAME=root
+            - MONGO_INITDB_ROOT_PASSWORD=rootpassword
+            - MONGO_DB_METRICS_USERNAME=monitoring@system.com
+            - MONGO_DB_METRICS_PASSWORD=MonitoringSystem123!
+            - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+            - JWT_EXPIRATION=3600s
         volumes:
             - .:/usr/src/app
             - /usr/src/app/node_modules # Prevent overwriting node_modules
@@ -55,6 +61,18 @@ services:
             timeout: 5s
             retries: 5
             start_period: 30s
+
+    mongodb-exporter:
+        image: percona/mongodb_exporter:0.47.1
+        container_name: mongodb-exporter
+        environment:
+            - MONGODB_URI=mongodb://${MONGO_DB_METRICS_USERNAME}:${MONGO_DB_METRICS_PASSWORD}@${MONGO_DB_HOSTNAME}:${MONGO_DB_PORT}/admin?authSource=admin
+        ports:
+            - '9216:9216'
+        depends_on:
+            - mongodb
+        networks:
+            - local-network
 
 volumes:
     mongodb_data_local:

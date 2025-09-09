@@ -116,10 +116,33 @@ try {
 	print('ERROR: Failed to create admin user: ' + error);
 }
 
+// Create metrics user in admin database for monitoring/exporter
+print('Setting up metrics user in admin database...');
+try {
+	var metricsUser = process.env.MONGO_DB_METRICS_USERNAME || 'monitoring@system.com';
+	var metricsPassword = process.env.MONGO_DB_METRICS_PASSWORD || 'MonitoringSystem123!';
+	var adminDb = db.getSiblingDB('admin');
+	var existingMetrics = adminDb.runCommand({ usersInfo: metricsUser });
+	if (existingMetrics.users && existingMetrics.users.length > 0) {
+		print('Metrics user already exists: ' + metricsUser);
+	} else {
+		print('Creating metrics user: ' + metricsUser);
+		adminDb.createUser({
+			user: metricsUser,
+			pwd: metricsPassword,
+			roles: [{ role: 'clusterMonitor', db: 'admin' }],
+		});
+		print('✓ Successfully created metrics user: ' + metricsUser);
+	}
+} catch (error) {
+	print('ERROR: Failed to create metrics user: ' + error);
+}
+
 print('=== MongoDB initialization completed successfully ===');
 print('Summary:');
 print('- Database: ' + process.env.MONGO_DB_DATABASE);
 print('- Application user: ' + process.env.MONGO_DB_USERNAME);
 print('- Admin email: ' + (process.env.MONGO_DB_ADMIN_USERNAME || 'admin@admin.com'));
+print('- Metrics user: ' + (process.env.MONGO_DB_METRICS_USERNAME || 'metricsuser'));
 print('- Collections: users, roles, permissions');
 print('=== End of initialization ===');

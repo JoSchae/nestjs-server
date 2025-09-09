@@ -33,6 +33,10 @@ export class SeedService implements OnModuleInit {
 			// Create super admin user if it doesn't exist
 			await this.createSuperAdminUser();
 			this.logger.log('Super admin user checked/created successfully');
+
+			// Create monitoring user if it doesn't exist
+			await this.createMonitoringUser();
+			this.logger.log('Monitoring user checked/created successfully');
 		} catch (error) {
 			this.logger.error('Error during seeding:', error);
 		}
@@ -59,6 +63,11 @@ export class SeedService implements OnModuleInit {
 				name: 'user',
 				description: 'Basic user with read-only access to own profile',
 				permissions: ['user:read'],
+			},
+			{
+				name: 'monitoring',
+				description: 'Monitoring system access for metrics collection',
+				permissions: ['metrics:read'],
 			},
 		];
 
@@ -124,6 +133,39 @@ export class SeedService implements OnModuleInit {
 			}
 		} catch (error) {
 			this.logger.error('Error creating super admin user:', error);
+		}
+	}
+
+	private async createMonitoringUser() {
+		const monitoringEmail = 'monitoring@system.com';
+
+		try {
+			// Check if monitoring user exists
+			const existingUser = await this.userService.findOneByEmail({ email: monitoringEmail }).catch(() => null);
+
+			if (!existingUser) {
+				// Create monitoring user
+				const monitoringUser = await this.userService.create({
+					firstName: 'Monitoring',
+					lastName: 'System',
+					email: monitoringEmail,
+					password: 'MonitoringSystem123!', // Should be changed for production
+					isActive: true,
+				});
+
+				// Get monitoring role
+				const monitoringRole = await this.roleService.findByName('monitoring');
+
+				// Assign monitoring role
+				await this.userService.assignRoleToUser((monitoringUser as any)._id, (monitoringRole as any)._id);
+
+				this.logger.log('Monitoring user created with default credentials');
+				this.logger.warn('IMPORTANT: Please change the monitoring user password for production!');
+				this.logger.log(`Monitoring user email: ${monitoringEmail}`);
+				this.logger.log('Monitoring user password: MonitoringSystem123!');
+			}
+		} catch (error) {
+			this.logger.error('Error creating monitoring user:', error);
 		}
 	}
 }

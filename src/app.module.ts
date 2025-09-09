@@ -9,8 +9,10 @@ import { UserModule } from './user/user.module';
 import { RoleModule } from './role/role.module';
 import { PermissionModule } from './permission/permission.module';
 import { SeedModule } from './seed/seed.module';
-import { APP_GUARD } from '@nestjs/core';
+import { MetricsModule } from './metrics/metrics.module';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { MetricsInterceptor } from './metrics/metrics.interceptor';
 
 @Module({
 	imports: [
@@ -31,6 +33,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 		RoleModule,
 		PermissionModule,
 		SeedModule,
+		MetricsModule,
 	],
 	controllers: [AppController],
 	providers: [
@@ -38,6 +41,10 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 		{
 			provide: APP_GUARD,
 			useClass: JwtAuthGuard,
+		},
+		{
+			provide: APP_INTERCEPTOR,
+			useClass: MetricsInterceptor,
 		},
 	],
 })
