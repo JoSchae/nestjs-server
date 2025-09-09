@@ -38,6 +38,8 @@ jobs:
                   MONGO_DB_ADMINUSER_PASSWORD=${{ secrets.MONGO_DB_ADMINUSER_PASSWORD }}
                   MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}
                   MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
+                  MONGO_DB_METRICS_USERNAME=${{ secrets.MONGO_DB_METRICS_USERNAME }}
+                  MONGO_DB_METRICS_PASSWORD=${{ secrets.MONGO_DB_METRICS_PASSWORD }}
                   JWT_SECRET=${{ secrets.JWT_SECRET }}
                   JWT_EXPIRATION=3600s
                   EOF
