@@ -4,15 +4,8 @@
 FROM mongo:4.4.18
 
 
-# Remove existing MongoDB repository with expired key, then add new one
-RUN rm -f /etc/apt/sources.list.d/mongodb-org-*.list && \
-    apt-get update && \
-    apt-get install -y curl gnupg && \
-    curl -fsSL https://pgp.mongodb.com/server-4.4.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-archive-keyring.gpg && \
-    echo "deb [ signed-by=/usr/share/keyrings/mongodb-archive-keyring.gpg ] http://repo.mongodb.org/apt/ubuntu focal/mongodb-org/4.4 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-4.4.list
-
-# Install Node.js and npm properly
-RUN apt-get update && \
+# Ignore MongoDB repository GPG errors and install only what we need
+RUN apt-get update || true && \
     apt-get install -y curl && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && \
