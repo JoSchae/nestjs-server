@@ -4,7 +4,9 @@
 FROM mongo:4.4.18
 
 
-RUN apt-get update && \
+# Remove existing MongoDB repository with expired key, then add new one
+RUN rm -f /etc/apt/sources.list.d/mongodb-org-*.list && \
+    apt-get update && \
     apt-get install -y curl gnupg && \
     curl -fsSL https://pgp.mongodb.com/server-4.4.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-archive-keyring.gpg && \
     echo "deb [ signed-by=/usr/share/keyrings/mongodb-archive-keyring.gpg ] http://repo.mongodb.org/apt/ubuntu focal/mongodb-org/4.4 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-4.4.list
