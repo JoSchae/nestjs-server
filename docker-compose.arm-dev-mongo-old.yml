@@ -1,15 +1,15 @@
 services:
     nestjs:
         image: johannesschaefer/nestjs-server:arm-dev
-        pull_policy: always
+        command: npm run start:debug
 
     mongodb:
-        image: johannesschaefer/mongodb:arm-dev
-        pull_policy: always
+        build:
+            context: .
+            dockerfile: dockerfiles/mongo-old/Dockerfile
 
     nginx:
         image: johannesschaefer/nginx:arm-dev
-        pull_policy: always
         ports:
             - '127.0.0.1:80:80'
         depends_on:

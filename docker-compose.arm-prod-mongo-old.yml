@@ -4,7 +4,9 @@ services:
         command: npm run start:prod
 
     mongodb:
-        image: johannesschaefer/mongodb:arm-prod
+        build:
+            context: .
+            dockerfile: dockerfiles/mongo-old/Dockerfile
 
     nginx:
         image: johannesschaefer/nginx:arm-prod

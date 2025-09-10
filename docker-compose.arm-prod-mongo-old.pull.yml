@@ -1,13 +1,15 @@
 services:
     nestjs:
         image: johannesschaefer/nestjs:arm-prod
-        command: npm run start:prod
+        pull_policy: always
 
     mongodb:
-        image: johannesschaefer/mongodb:arm-prod
+        image: johannesschaefer/mongodb-old:arm-prod
+        pull_policy: always
 
     nginx:
         image: johannesschaefer/nginx:arm-prod
+        pull_policy: always
         volumes:
             - /etc/ssl/certs:/etc/ssl/certs:ro
             - /etc/ssl/private:/etc/ssl/private:ro
