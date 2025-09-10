@@ -3,9 +3,12 @@ FROM node:22-alpine AS builder
 
 WORKDIR /usr/src/app
 
+# Install build dependencies for native modules
+RUN apk add --no-cache python3 make g++
+
 # Copy package files and install dependencies with optimizations
 COPY package*.json ./
-RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund && \
+RUN npm ci --include=dev --no-audit --no-fund && \
     npm install -g @nestjs/cli
 
 # Copy source and build
@@ -17,9 +20,12 @@ FROM node:22-alpine AS dev
 
 WORKDIR /usr/src/app
 
+# Install build dependencies for native modules
+RUN apk add --no-cache python3 make g++
+
 # Install dependencies for development
 COPY package*.json ./
-RUN npm ci --ignore-scripts --no-audit --no-fund && \
+RUN npm ci --no-audit --no-fund && \
     npm install -g @nestjs/cli
 
 COPY . .
@@ -29,9 +35,12 @@ FROM node:22-alpine AS prod
 
 WORKDIR /usr/src/app
 
+# Install build dependencies for native modules
+RUN apk add --no-cache python3 make g++
+
 # Install only production dependencies
 COPY package*.json ./
-RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+RUN npm ci --omit=dev --no-audit --no-fund
 
 # Copy built application from builder stage
 COPY --from=builder /usr/src/app/dist ./dist
