@@ -1,6 +1,6 @@
 services:
     nestjs:
-        image: johannesschaefer/nestjs-server:arm-prod
+        image: johannesschaefer/nestjs:arm-prod
         pull_policy: always
 
     mongodb:
@@ -10,3 +10,11 @@ services:
     nginx:
         image: johannesschaefer/nginx:arm-prod
         pull_policy: always
+        volumes:
+            - /etc/ssl/certs:/etc/ssl/certs:ro
+            - /etc/ssl/private:/etc/ssl/private:ro
+        ports:
+            - '80:80'
+            - '443:443'
+        depends_on:
+            - nestjs

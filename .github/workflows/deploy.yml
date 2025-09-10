@@ -68,6 +68,14 @@ jobs:
                     --push \
                     .
 
+                  # Build and push MongoDB Old image
+                  docker buildx build \
+                    --platform linux/amd64 \
+                    --tag ${{ secrets.DOCKER_USERNAME }}/mongodb-old:${{ env.TAG }} \
+                    --file dockerfiles/mongo-old/Dockerfile \
+                    --push \
+                    .
+
                   # Build and push Nginx image
                   docker buildx build \
                     --platform linux/amd64 \
@@ -125,6 +133,16 @@ jobs:
                     --platform linux/arm64 \
                     --tag ${{ secrets.DOCKER_USERNAME }}/mongodb:${{ env.ARM_TAG }} \
                     --file dockerfiles/mongodb/Dockerfile \
+                    --cache-from type=gha \
+                    --cache-to type=gha,mode=max \
+                    --push \
+                    .
+
+                  # Build and push MongoDB Old ARM image
+                  docker buildx build \
+                    --platform linux/arm64 \
+                    --tag ${{ secrets.DOCKER_USERNAME }}/mongodb-old:${{ env.ARM_TAG }} \
+                    --file dockerfiles/mongo-old/Dockerfile \
                     --cache-from type=gha \
                     --cache-to type=gha,mode=max \
                     --push \
