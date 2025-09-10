@@ -1,13 +1,17 @@
-# Dockerfile for MongoDB 4.4.18 (ARM-compatible)
-
 # dockerfiles/mongo-old/Dockerfile
 FROM mongo:4.4.18
 
+# Completely disable all MongoDB repositories
+RUN rm -f /etc/apt/sources.list.d/mongodb-org-*.list && \
+    sed -i '/mongodb/d' /etc/apt/sources.list && \
+    find /etc/apt -name "*.list" -exec sed -i '/mongodb/d' {} \; && \
+    echo 'APT::Update::Pre-Invoke { "rm -f /var/lib/apt/lists/*mongodb*"; };' > /etc/apt/apt.conf.d/99no-mongodb
 
-# Ignore MongoDB repository GPG errors and install only what we need
-RUN apt-get update || true && \
+# Install Node.js and npm properly (ignore MongoDB repo errors)
+RUN (apt-get update || true) && \
     apt-get install -y curl && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get update -o Dir::Etc::sourcelist=/dev/null -o Dir::Etc::sourceparts=/dev/null -o APT::Get::List-Cleanup=0 && \
     apt-get install -y nodejs && \
     npm install -g bcrypt && \
     apt-get clean && \
