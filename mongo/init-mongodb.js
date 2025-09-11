@@ -1,46 +1,57 @@
 // MongoDB initialization script for NestJS RBAC system
 print('=== Starting MongoDB initialization for NestJS RBAC system ===');
 
-// Check if required environment variables are set
-if (!process.env.MONGO_DB_USERNAME || !process.env.MONGO_DB_PASSWORD || !process.env.MONGO_DB_DATABASE) {
+// MongoDB initialization scripts receive environment variables directly
+// These are set by Docker Compose and must be available
+var dbName = _getEnv('MONGO_DB_DATABASE') || _getEnv('MONGO_INITDB_DATABASE');
+var username = _getEnv('MONGO_DB_USERNAME');
+var password = _getEnv('MONGO_DB_PASSWORD');
+var adminEmail = _getEnv('MONGO_DB_ADMIN_USERNAME');
+var adminPassword = _getEnv('MONGO_DB_ADMINUSER_PASSWORD');
+
+// Verify all required environment variables are set
+if (!dbName || !username || !password || !adminEmail || !adminPassword) {
 	print('ERROR: Required environment variables missing:');
-	print('- MONGO_DB_USERNAME: ' + (process.env.MONGO_DB_USERNAME || 'NOT SET'));
-	print('- MONGO_DB_PASSWORD: ' + (process.env.MONGO_DB_PASSWORD ? 'SET' : 'NOT SET'));
-	print('- MONGO_DB_DATABASE: ' + (process.env.MONGO_DB_DATABASE || 'NOT SET'));
+	print('- MONGO_DB_DATABASE: ' + (dbName || 'NOT SET'));
+	print('- MONGO_DB_USERNAME: ' + (username || 'NOT SET'));
+	print('- MONGO_DB_PASSWORD: ' + (password ? 'SET' : 'NOT SET'));
+	print('- MONGO_DB_ADMIN_USERNAME: ' + (adminEmail || 'NOT SET'));
+	print('- MONGO_DB_ADMINUSER_PASSWORD: ' + (adminPassword ? 'SET' : 'NOT SET'));
 	quit(1);
 }
 
 print('Environment variables loaded:');
-print('- Database: ' + process.env.MONGO_DB_DATABASE);
-print('- Username: ' + process.env.MONGO_DB_USERNAME);
-print('- Password: ' + (process.env.MONGO_DB_PASSWORD ? 'SET' : 'NOT SET'));
+print('- Database: ' + dbName);
+print('- Username: ' + username);
+print('- Admin Email: ' + adminEmail);
+print('- Password/Admin Password: SET');
 
 // Switch to application database
-db = db.getSiblingDB(process.env.MONGO_DB_DATABASE);
-print('Switched to database: ' + process.env.MONGO_DB_DATABASE);
+db = db.getSiblingDB(dbName);
+print('Switched to database: ' + dbName);
 
 // Check if application user already exists
 print('Checking if application user exists...');
 try {
-	var existingUsers = db.runCommand({ usersInfo: process.env.MONGO_DB_USERNAME });
+	var existingUsers = db.runCommand({ usersInfo: username });
 	if (existingUsers.users && existingUsers.users.length > 0) {
-		print('Application user already exists: ' + process.env.MONGO_DB_USERNAME);
+		print('Application user already exists: ' + username);
 		print('User details: ' + JSON.stringify(existingUsers.users[0], null, 2));
 	} else {
-		print('Creating application user: ' + process.env.MONGO_DB_USERNAME);
+		print('Creating application user: ' + username);
 		// Create application user
 		db.createUser({
-			user: process.env.MONGO_DB_USERNAME,
-			pwd: process.env.MONGO_DB_PASSWORD,
+			user: username,
+			pwd: password,
 			roles: [
-				{ role: 'readWrite', db: process.env.MONGO_DB_DATABASE },
-				{ role: 'dbAdmin', db: process.env.MONGO_DB_DATABASE },
+				{ role: 'readWrite', db: dbName },
+				{ role: 'dbAdmin', db: dbName },
 			],
 		});
-		print('✓ Successfully created application user: ' + process.env.MONGO_DB_USERNAME);
+		print('✓ Successfully created application user: ' + username);
 
 		// Verify user creation
-		var verification = db.runCommand({ usersInfo: process.env.MONGO_DB_USERNAME });
+		var verification = db.runCommand({ usersInfo: username });
 		if (verification.users && verification.users.length > 0) {
 			print('✓ User creation verified successfully');
 		} else {
@@ -88,9 +99,6 @@ try {
 // Note: The application will handle proper password hashing
 print('Setting up initial admin user...');
 try {
-	var adminEmail = process.env.MONGO_DB_ADMIN_USERNAME || 'admin@admin.com';
-	var adminPassword = process.env.MONGO_DB_ADMINUSER_PASSWORD || 'adminpassword';
-
 	// Check if admin user already exists
 	var existingAdmin = db.users.findOne({ email: adminEmail });
 	if (!existingAdmin) {
@@ -119,8 +127,8 @@ try {
 // Create metrics user in admin database for monitoring/exporter
 print('Setting up metrics user in admin database...');
 try {
-	var metricsUser = process.env.MONGO_DB_METRICS_USERNAME || 'monitoring@system.com';
-	var metricsPassword = process.env.MONGO_DB_METRICS_PASSWORD || 'MonitoringSystem123!';
+	var metricsUser = 'metricsuser';
+	var metricsPassword = 'MonitoringSystem123!';
 	var adminDb = db.getSiblingDB('admin');
 	var existingMetrics = adminDb.runCommand({ usersInfo: metricsUser });
 	if (existingMetrics.users && existingMetrics.users.length > 0) {
@@ -140,9 +148,9 @@ try {
 
 print('=== MongoDB initialization completed successfully ===');
 print('Summary:');
-print('- Database: ' + process.env.MONGO_DB_DATABASE);
-print('- Application user: ' + process.env.MONGO_DB_USERNAME);
-print('- Admin email: ' + (process.env.MONGO_DB_ADMIN_USERNAME || 'admin@admin.com'));
-print('- Metrics user: ' + (process.env.MONGO_DB_METRICS_USERNAME || 'metricsuser'));
+print('- Database: ' + dbName);
+print('- Application user: ' + username);
+print('- Admin email: ' + adminEmail);
+print('- Metrics user: ' + metricsUser);
 print('- Collections: users, roles, permissions');
 print('=== End of initialization ===');
