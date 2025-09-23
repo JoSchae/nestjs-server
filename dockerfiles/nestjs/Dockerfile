@@ -8,7 +8,7 @@ RUN apk add --no-cache python3 make g++ build-base
 
 # Copy package files and install dependencies (allow lifecycle scripts so native modules build)
 COPY package*.json ./
-# Remove --ignore-scripts to allow bcrypt to compile for ARM64
+# Use npm ci to get a reproducible install and enable scripts so bcrypt compiles for the target
 RUN npm ci --include=dev --no-audit --no-fund && \
     npm install -g @nestjs/cli
 
@@ -21,7 +21,7 @@ FROM node:22-alpine AS dev
 
 WORKDIR /usr/src/app
 
-# Install dependencies for development (allow scripts for native modules)
+# Install dependencies for development (keep scripts for local dev)
 COPY package*.json ./
 RUN npm ci --no-audit --no-fund && \
     npm install -g @nestjs/cli

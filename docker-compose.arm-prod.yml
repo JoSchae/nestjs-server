@@ -1,6 +1,6 @@
 services:
     nestjs:
-        image: johannesschaefer/nestjs-server:arm-prod
+        image: johannesschaefer/nestjs:arm-prod
         command: npm run start:prod
 
     mongodb:

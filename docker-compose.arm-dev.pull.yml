@@ -1,6 +1,6 @@
 services:
     nestjs:
-        image: johannesschaefer/nestjs-server:arm-dev
+        image: johannesschaefer/nestjs:arm-dev
         pull_policy: always
 
     mongodb:

@@ -13,7 +13,7 @@ services:
             - MONGO_DB_USERNAME=nestjs_user
             - MONGO_DB_PASSWORD=nestjs_password
             - MONGO_DB_HOSTNAME=mongodb
-            - MONGO_DB_DATABASE=nestjs-server
+            - MONGO_DB_DATABASE=nestjs
             - MONGO_DB_ADMIN_USERNAME=admin@admin.com
             - MONGO_DB_ADMINUSER_PASSWORD=adminpassword
             - MONGO_INITDB_ROOT_USERNAME=root
