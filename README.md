@@ -1,21 +1,45 @@
 # NestJS Server
 
+A full-stack NestJS application with MongoDB, Nginx, and complete CI/CD pipeline.
+
+## 🚀 Quick Deployment
+
+For complete deployment instructions, see **[DEPLOYMENT.md](DEPLOYMENT.md)**
+
+### TL;DR
+1. **Push code** → GitHub Actions builds & pushes Docker images
+2. **Run on server**: `./deploy-production.sh`
+3. **Access via** → Your Cloudflare tunnel domain
+
 ## Features
 
 - User Authentication with JWT
 - MongoDB Integration
-- Cloudflare DDNS Support
+- Cloudflare Tunnel Support
 - Docker Containerization
 - Nginx Reverse Proxy
+- Automated CI/CD Pipeline
+- Multi-architecture builds (AMD64/ARM64)
 
 ## Quick Start
 
+### Local Development
 ```bash
 # Install dependencies
 npm install
 
-# Local development with MongoDB
+# Start with local MongoDB
 npm run start:local
+
+# Or use Docker Compose (includes nginx)
+docker-compose -f docker-compose.local.yml up
+```
+
+### Production Deployment
+```bash
+# On production server
+cp .env.prod.template .env.prod  # Fill with production values
+./deploy-production.sh          # Deploy with .env.prod
 ```
 
 ## Prerequesites

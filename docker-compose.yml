@@ -13,7 +13,7 @@ services:
             - /usr/src/app/node_modules
         container_name: nestjs
         env_file:
-            - .env
+            - .env.local
         depends_on:
             mongodb:
                 condition: service_healthy
@@ -27,16 +27,7 @@ services:
             dockerfile: ./dockerfiles/mongodb/Dockerfile
         container_name: mongodb
         env_file:
-            - .env
-        environment:
-            - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
-            - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
-            - MONGO_INITDB_DATABASE=${MONGO_DB_DATABASE}
-            - MONGO_DB_USERNAME=${MONGO_DB_USERNAME}
-            - MONGO_DB_PASSWORD=${MONGO_DB_PASSWORD}
-            - MONGO_DB_DATABASE=${MONGO_DB_DATABASE}
-            - MONGO_DB_ADMIN_USERNAME=${MONGO_DB_ADMIN_USERNAME}
-            - MONGO_DB_ADMINUSER_PASSWORD=${MONGO_DB_ADMINUSER_PASSWORD}
+            - .env.local
         volumes:
             - mongodb_data:/data/db/
             - mongodb_log:/var/log/mongodb/
@@ -66,8 +57,10 @@ services:
     mongodb-exporter:
         image: percona/mongodb_exporter:0.47.1
         container_name: mongodb-exporter
+        env_file:
+            - .env.local
         environment:
-            - MONGODB_URI=mongodb://${MONGO_DB_METRICS_USERNAME}:${MONGO_DB_METRICS_PASSWORD}@${MONGO_DB_HOSTNAME}:${MONGO_DB_PORT}/${MONGO_DB_DATABASE}?authSource=${MONGO_DB_DATABASE}
+            - MONGODB_URI=mongodb://${MONGO_DB_METRICS_USERNAME}:${MONGO_DB_METRICS_PASSWORD}@${MONGO_DB_HOSTNAME}:${MONGO_DB_PORT}/${MONGO_DB_DATABASE}?authSource=admin
         ports:
             - '9216:9216'
         depends_on:
