@@ -119,6 +119,26 @@ jobs:
                   username: ${{ secrets.DOCKER_USERNAME }}
                   password: ${{ secrets.DOCKER_PASSWORD }}
 
+            - name: Generate production environment file
+              run: |
+                  cat << EOF > .env.prod
+                  NODE_ENV=prod
+                  SERVER_PORT=3000
+                  MONGO_DB_PORT=27017
+                  MONGO_DB_USERNAME=${{ secrets.MONGO_DB_USERNAME }}
+                  MONGO_DB_PASSWORD=${{ secrets.MONGO_DB_PASSWORD }}
+                  MONGO_DB_HOSTNAME=mongodb
+                  MONGO_DB_DATABASE=${{ secrets.MONGO_DB_DATABASE }}
+                  MONGO_DB_ADMIN_USERNAME=${{ secrets.MONGO_DB_ADMIN_USERNAME }}
+                  MONGO_DB_ADMINUSER_PASSWORD=${{ secrets.MONGO_DB_ADMINUSER_PASSWORD }}
+                  MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}
+                  MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
+                  MONGO_DB_METRICS_USERNAME=${{ secrets.MONGO_DB_METRICS_USERNAME }}
+                  MONGO_DB_METRICS_PASSWORD=${{ secrets.MONGO_DB_METRICS_PASSWORD }}
+                  JWT_SECRET=${{ secrets.JWT_SECRET }}
+                  JWT_EXPIRATION=3600s
+                  EOF
+
             - name: Build and push ARM64 images
               env:
                   NODE_ENV: ${{ env.TAG }}
@@ -130,8 +150,8 @@ jobs:
                     --build-arg NODE_ENV=${{ env.TAG }} \
                     --tag ${{ secrets.DOCKER_USERNAME }}/nestjs:${{ env.ARM_TAG }} \
                     --file dockerfiles/nestjs/Dockerfile \
-                    --cache-from type=gha \
-                    --cache-to type=gha,mode=max \
+                    --cache-from type=gha,scope=nestjs-arm-${{ env.TAG }} \
+                    --cache-to type=gha,mode=max,scope=nestjs-arm-${{ env.TAG }} \
                     --push \
                     .
 
@@ -140,8 +160,8 @@ jobs:
                     --platform linux/arm64 \
                     --tag ${{ secrets.DOCKER_USERNAME }}/mongodb:${{ env.ARM_TAG }} \
                     --file dockerfiles/mongodb/Dockerfile \
-                    --cache-from type=gha \
-                    --cache-to type=gha,mode=max \
+                    --cache-from type=gha,scope=mongodb-arm-${{ env.TAG }} \
+                    --cache-to type=gha,mode=max,scope=mongodb-arm-${{ env.TAG }} \
                     --push \
                     .
 
@@ -151,7 +171,7 @@ jobs:
                     --build-arg NODE_ENV=${{ env.TAG }} \
                     --tag ${{ secrets.DOCKER_USERNAME }}/nginx:${{ env.ARM_TAG }} \
                     --file dockerfiles/nginx/Dockerfile \
-                    --cache-from type=gha \
-                    --cache-to type=gha,mode=max \
+                    --cache-from type=gha,scope=nginx-arm-${{ env.TAG }} \
+                    --cache-to type=gha,mode=max,scope=nginx-arm-${{ env.TAG }} \
                     --push \
                     .
