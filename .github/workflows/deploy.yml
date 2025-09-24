@@ -9,16 +9,24 @@ on:
     workflow_dispatch: # Allow manual triggering
 
 jobs:
-    build-amd64:
+    build-multiarch:
         runs-on: ubuntu-latest
+        timeout-minutes: 120
         env:
             TAG: prod
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
 
+            - name: Set up QEMU for multi-arch builds
+              uses: docker/setup-qemu-action@v3
+              with:
+                  platforms: linux/amd64,linux/arm64
+
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v3
+              with:
+                  driver-opts: network=host
 
             - name: Log in to Docker Hub
               uses: docker/login-action@v3
@@ -46,132 +54,38 @@ jobs:
                   JWT_EXPIRATION=3600s
                   EOF
 
-            - name: Verify build context
-              run: |
-                  echo "Building for platform: linux/amd64"
-                  echo "Environment: ${{ env.TAG }}"
-                  echo "Docker username: ${{ secrets.DOCKER_USERNAME }}"
-
-            - name: Build and push AMD64 images
+            - name: Build and push multi-arch images
               env:
-                  NODE_ENV: ${{ env.TAG }}
                   DOCKER_BUILDKIT: 1
               run: |
-                  # Build and push NestJS image
+                  # Build and push NestJS multi-arch image
                   docker buildx build \
-                    --platform linux/amd64 \
+                    --platform linux/amd64,linux/arm64 \
                     --build-arg NODE_ENV=${{ env.TAG }} \
                     --tag ${{ secrets.DOCKER_USERNAME }}/nestjs:${{ env.TAG }} \
-                    --tag ${{ secrets.DOCKER_USERNAME }}/nestjs:latest-${{ env.TAG }} \
                     --file dockerfiles/nestjs/Dockerfile \
                     --cache-from type=gha,scope=nestjs-${{ env.TAG }} \
                     --cache-to type=gha,mode=max,scope=nestjs-${{ env.TAG }} \
                     --push \
                     .
 
-                  # Build and push MongoDB image
+                  # Build and push MongoDB multi-arch image  
                   docker buildx build \
-                    --platform linux/amd64 \
-                    --tag ${{ secrets.DOCKER_USERNAME }}/mongodb:${{ env.TAG }} \
-                    --tag ${{ secrets.DOCKER_USERNAME }}/mongodb:latest-${{ env.TAG }} \
+                    --platform linux/amd64,linux/arm64 \
+                    --tag ${{ secrets.DOCKER_USERNAME }}/mongo:${{ env.TAG }} \
                     --file dockerfiles/mongodb/Dockerfile \
                     --cache-from type=gha,scope=mongodb-${{ env.TAG }} \
                     --cache-to type=gha,mode=max,scope=mongodb-${{ env.TAG }} \
                     --push \
                     .
 
-                  # Build and push Nginx image
+                  # Build and push Nginx multi-arch image
                   docker buildx build \
-                    --platform linux/amd64 \
+                    --platform linux/amd64,linux/arm64 \
                     --build-arg NODE_ENV=${{ env.TAG }} \
                     --tag ${{ secrets.DOCKER_USERNAME }}/nginx:${{ env.TAG }} \
-                    --tag ${{ secrets.DOCKER_USERNAME }}/nginx:latest-${{ env.TAG }} \
                     --file dockerfiles/nginx/Dockerfile \
                     --cache-from type=gha,scope=nginx-${{ env.TAG }} \
                     --cache-to type=gha,mode=max,scope=nginx-${{ env.TAG }} \
-                    --push \
-                    .
-
-    build-arm64:
-        runs-on: ubuntu-latest
-        timeout-minutes: 120
-        env:
-            TAG: prod
-            ARM_TAG: arm-prod
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
-
-            - name: Set up QEMU for ARM emulation
-              uses: docker/setup-qemu-action@v3
-              with:
-                  platforms: linux/arm64
-
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
-              with:
-                  driver-opts: |
-                      network=host
-
-            - name: Log in to Docker Hub
-              uses: docker/login-action@v3
-              with:
-                  username: ${{ secrets.DOCKER_USERNAME }}
-                  password: ${{ secrets.DOCKER_PASSWORD }}
-
-            - name: Generate production environment file
-              run: |
-                  cat << EOF > .env.prod
-                  NODE_ENV=prod
-                  SERVER_PORT=3000
-                  MONGO_DB_PORT=27017
-                  MONGO_DB_USERNAME=${{ secrets.MONGO_DB_USERNAME }}
-                  MONGO_DB_PASSWORD=${{ secrets.MONGO_DB_PASSWORD }}
-                  MONGO_DB_HOSTNAME=mongodb
-                  MONGO_DB_DATABASE=${{ secrets.MONGO_DB_DATABASE }}
-                  MONGO_DB_ADMIN_USERNAME=${{ secrets.MONGO_DB_ADMIN_USERNAME }}
-                  MONGO_DB_ADMINUSER_PASSWORD=${{ secrets.MONGO_DB_ADMINUSER_PASSWORD }}
-                  MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}
-                  MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
-                  MONGO_DB_METRICS_USERNAME=${{ secrets.MONGO_DB_METRICS_USERNAME }}
-                  MONGO_DB_METRICS_PASSWORD=${{ secrets.MONGO_DB_METRICS_PASSWORD }}
-                  JWT_SECRET=${{ secrets.JWT_SECRET }}
-                  JWT_EXPIRATION=3600s
-                  EOF
-
-            - name: Build and push ARM64 images
-              env:
-                  NODE_ENV: ${{ env.TAG }}
-                  DOCKER_BUILDKIT: 1
-              run: |
-                  # Build and push NestJS ARM image with caching
-                  docker buildx build \
-                    --platform linux/arm64 \
-                    --build-arg NODE_ENV=${{ env.TAG }} \
-                    --tag ${{ secrets.DOCKER_USERNAME }}/nestjs:${{ env.ARM_TAG }} \
-                    --file dockerfiles/nestjs/Dockerfile \
-                    --cache-from type=gha,scope=nestjs-arm-${{ env.TAG }} \
-                    --cache-to type=gha,mode=max,scope=nestjs-arm-${{ env.TAG }} \
-                    --push \
-                    .
-
-                  # Build and push MongoDB ARM image
-                  docker buildx build \
-                    --platform linux/arm64 \
-                    --tag ${{ secrets.DOCKER_USERNAME }}/mongodb:${{ env.ARM_TAG }} \
-                    --file dockerfiles/mongodb/Dockerfile \
-                    --cache-from type=gha,scope=mongodb-arm-${{ env.TAG }} \
-                    --cache-to type=gha,mode=max,scope=mongodb-arm-${{ env.TAG }} \
-                    --push \
-                    .
-
-                  # Build and push Nginx ARM image
-                  docker buildx build \
-                    --platform linux/arm64 \
-                    --build-arg NODE_ENV=${{ env.TAG }} \
-                    --tag ${{ secrets.DOCKER_USERNAME }}/nginx:${{ env.ARM_TAG }} \
-                    --file dockerfiles/nginx/Dockerfile \
-                    --cache-from type=gha,scope=nginx-arm-${{ env.TAG }} \
-                    --cache-to type=gha,mode=max,scope=nginx-arm-${{ env.TAG }} \
                     --push \
                     .
