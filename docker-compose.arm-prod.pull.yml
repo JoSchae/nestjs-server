@@ -51,7 +51,12 @@ services:
         image: percona/mongodb_exporter:0.47.1
         container_name: mongodb-exporter
         environment:
-            - MONGODB_URI=mongodb://${MONGO_DB_METRICS_USERNAME}:${MONGO_DB_METRICS_PASSWORD}@${MONGO_DB_HOSTNAME}:${MONGO_DB_PORT}/${MONGO_DB_DATABASE}?authSource=admin
+            - MONGODB_HOST=${MONGO_DB_HOSTNAME}
+            - MONGODB_PORT=${MONGO_DB_PORT}
+            - MONGODB_USERNAME=${MONGO_DB_METRICS_USERNAME}
+            - MONGODB_PASSWORD=${MONGO_DB_METRICS_PASSWORD}
+            - MONGODB_DATABASE=${MONGO_DB_DATABASE}
+            - MONGODB_AUTH_SOURCE=admin
         ports:
             - '9216:9216'
         depends_on:
