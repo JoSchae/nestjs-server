@@ -98,11 +98,11 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up
 docker compose -f docker-compose.yml -f docker-compose.arm-dev.yml up
 
 # ARM Production
-docker compose -f docker-compose.yml -f docker-compose.arm-prod.yml up
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up
 
 # Pull latest ARM images first (recommended)
 docker compose -f docker-compose.yml -f docker-compose.arm-dev.yml -f docker-compose.arm-dev.pull.yml pull
-docker compose -f docker-compose.yml -f docker-compose.arm-prod.yml -f docker-compose.arm-prod.pull.yml pull
+docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.prod.pull.yml pull
 ```
 
 ### Helpful Aliases
