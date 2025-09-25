@@ -21,7 +21,6 @@ services:
         volumes:
             - mongodb_data:/data/db/
             - mongodb_log:/var/log/mongodb/
-            - ./mongo:/docker-entrypoint-initdb.d:ro
         networks:
             - app-network
         healthcheck:
