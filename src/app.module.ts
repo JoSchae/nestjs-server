@@ -10,9 +10,11 @@ import { RoleModule } from './role/role.module';
 import { PermissionModule } from './permission/permission.module';
 import { SeedModule } from './seed/seed.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { LoggerModule } from './shared/logger/logger.module';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { MetricsInterceptor } from './metrics/metrics.interceptor';
+import { LoggingInterceptor } from './shared/logger/logging.interceptor';
 
 @Module({
 	imports: [
@@ -34,6 +36,7 @@ import { MetricsInterceptor } from './metrics/metrics.interceptor';
 		PermissionModule,
 		SeedModule,
 		MetricsModule,
+		LoggerModule,
 	],
 	controllers: [AppController],
 	providers: [
@@ -41,6 +44,10 @@ import { MetricsInterceptor } from './metrics/metrics.interceptor';
 		{
 			provide: APP_GUARD,
 			useClass: JwtAuthGuard,
+		},
+		{
+			provide: APP_INTERCEPTOR,
+			useClass: LoggingInterceptor,
 		},
 		{
 			provide: APP_INTERCEPTOR,

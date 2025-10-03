@@ -12,10 +12,12 @@ export class AppController {
 	@ApiOperation({ summary: 'Health check endpoint' })
 	@ApiResponse({ status: 200, description: 'Service is healthy' })
 	getHealth(): object {
+		const pingResponse = this.appService.getPing();
 		return {
 			status: 'ok',
 			timestamp: new Date().toISOString(),
 			service: 'nestjs-server',
+			message: pingResponse,
 		};
 	}
 }
