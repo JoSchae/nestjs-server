@@ -1,0 +1,42 @@
+# Development Override - Use with base
+# Usage: docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up
+
+services:
+    nestjs:
+        build:
+            context: .
+            dockerfile: ./dockerfiles/nestjs/Dockerfile
+            target: dev
+            args:
+                - NODE_ENV=dev
+        command: npm run start:debug
+        volumes:
+            - .:/usr/src/app
+            - /usr/src/app/node_modules
+        ports:
+            - "3000:3000"
+            - "9229:9229" # Debug port
+
+    mongodb:
+        build:
+            context: .
+            dockerfile: ./dockerfiles/mongodb/Dockerfile
+
+    nginx:
+        build:
+            context: .
+            dockerfile: ./dockerfiles/nginx/Dockerfile
+            args:
+                - NODE_ENV=dev
+        ports:
+            - "80:80"
+
+    mongodb-exporter:
+        env_file:
+            - .env.dev
+        environment:
+            # Variables from .env file are substituted here by Docker Compose
+            # Standardized: credentials passed separately (no URL encoding needed)
+            - MONGODB_URI=mongodb://${MONGO_DB_HOSTNAME}:${MONGO_DB_PORT}/${MONGO_DB_DATABASE}?authSource=admin
+            - MONGODB_USERNAME=${MONGO_DB_METRICS_USERNAME}
+            - MONGODB_PASSWORD=${MONGO_DB_METRICS_PASSWORD}

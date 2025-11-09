@@ -28,6 +28,9 @@ RUN npm ci --no-audit --no-fund && \
 
 COPY . .
 
+# Bake in local environment configuration to a protected location
+COPY .env.dev /etc/app/.env
+
 # Production stage
 FROM node:22-alpine AS prod
 
@@ -41,6 +44,9 @@ COPY --from=builder /usr/src/app/dist ./dist
 
 # Copy package.json (optional) and other needed files
 COPY package*.json ./
+
+# Bake in local environment configuration to a protected location (will be overridden in production)
+COPY .env.dev /etc/app/.env
 
 # Create non-root user and set ownership
 RUN addgroup -g 1001 -S nodejs && \

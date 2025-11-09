@@ -44,3 +44,25 @@ export class Permission {
 export type PermissionDocument = Permission & Document;
 
 export const PermissionSchema = SchemaFactory.createForClass(Permission);
+
+// Performance Indexes
+// 1. Compound index for common query: findOne({ name, isActive })
+//    Used in: findByName with active filter, permission lookups
+PermissionSchema.index({ name: 1, isActive: 1 });
+
+// 2. Single-field index for filtering active permissions
+//    Used in: findAll({ isActive: true }), listing available permissions
+PermissionSchema.index({ isActive: 1 });
+
+// 3. Compound index for action+resource queries
+//    Used in: findOne({ action, resource }), checking permission conflicts
+PermissionSchema.index({ action: 1, resource: 1 });
+
+// 4. Compound index for action+resource+isActive queries
+//    Used in: finding active permissions by action and resource
+PermissionSchema.index({ action: 1, resource: 1, isActive: 1 });
+
+// 5. Single-field indexes for individual filtering
+//    Used in: filtering by action or resource separately
+PermissionSchema.index({ action: 1 });
+PermissionSchema.index({ resource: 1 });

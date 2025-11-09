@@ -24,3 +24,16 @@ export class Role {
 export type RoleDocument = Role & Document;
 
 export const RoleSchema = SchemaFactory.createForClass(Role);
+
+// Performance Indexes
+// 1. Compound index for common query: findOne({ name, isActive })
+//    Used in: findByName with active filter, authorization checks
+RoleSchema.index({ name: 1, isActive: 1 });
+
+// 2. Single-field index for filtering active roles
+//    Used in: findAll({ isActive: true }), listing available roles
+RoleSchema.index({ isActive: 1 });
+
+// 3. Index on permissions array for permission-based queries
+//    Used in: populate('permissions'), finding roles by permission
+RoleSchema.index({ permissions: 1 });

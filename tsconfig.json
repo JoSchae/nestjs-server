@@ -17,5 +17,24 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false
+
+    //     /* Strict Type-Checking Options - Enabled for better type safety */
+    // "strict": true,                              // Enable all strict type checking options
+    // "strictNullChecks": true,                    // Enable strict null checks (was false)
+    // "noImplicitAny": true,                       // Error on expressions with implied 'any' type (was false)
+    // "strictBindCallApply": true,                 // Enable strict 'bind', 'call', and 'apply' checks (was false)
+    // "strictFunctionTypes": true,                 // Enable strict checking of function types
+    // "strictPropertyInitialization": true,        // Ensure class properties are initialized
+    
+    // /* Additional Checks */
+    // "noImplicitReturns": true,                   // Error when not all code paths return a value
+    // "noFallthroughCasesInSwitch": true,          // Error on fallthrough cases in switch (was false)
+    // "noUncheckedIndexedAccess": true,            // Add 'undefined' to index signature results
+    // "noImplicitOverride": true,                  // Ensure overriding members are marked with 'override'
+    // "forceConsistentCasingInFileNames": true,    // Disallow inconsistent casing in imports (was false)
+    
+    // /* Unused Code Checks */
+    // "noUnusedLocals": true,                      // Error on unused local variables
+    // "noUnusedParameters": true      
   }
 }

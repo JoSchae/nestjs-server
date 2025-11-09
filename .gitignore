@@ -39,7 +39,7 @@ lerna-debug.log*
 .env.prod
 .env.production
 .env.production.local
-.env.local.backup
+.env.dev.backup
 
 # secrets
 /secrets/*

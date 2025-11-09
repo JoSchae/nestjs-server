@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { PermissionService } from './permission.service';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Permission } from './model/permission.model';
+import { ParseMongoIdPipe } from '../shared/pipes/parse-mongo-id.pipe';
 
 @ApiTags('permissions')
 @ApiBearerAuth()
@@ -15,10 +17,11 @@ export class PermissionController {
 
 	@Post()
 	@RequirePermissions('permission:create')
+	@HttpCode(HttpStatus.CREATED)
 	@ApiOperation({ summary: 'Create a new permission' })
 	@ApiResponse({ status: 201, description: 'Permission created successfully' })
 	@ApiResponse({ status: 409, description: 'Permission already exists' })
-	create(@Body() createPermissionDto: CreatePermissionDto) {
+	create(@Body() createPermissionDto: CreatePermissionDto): Promise<Permission> {
 		return this.permissionService.create(createPermissionDto);
 	}
 
@@ -26,7 +29,7 @@ export class PermissionController {
 	@RequirePermissions('permission:read')
 	@ApiOperation({ summary: 'Get all permissions' })
 	@ApiResponse({ status: 200, description: 'Permissions retrieved successfully' })
-	findAll() {
+	findAll(): Promise<Permission[]> {
 		return this.permissionService.findAll();
 	}
 
@@ -34,8 +37,9 @@ export class PermissionController {
 	@RequirePermissions('permission:read')
 	@ApiOperation({ summary: 'Get permission by ID' })
 	@ApiResponse({ status: 200, description: 'Permission retrieved successfully' })
+	@ApiResponse({ status: 400, description: 'Invalid MongoDB ObjectId' })
 	@ApiResponse({ status: 404, description: 'Permission not found' })
-	findOne(@Param('id') id: string) {
+	findOne(@Param('id', ParseMongoIdPipe) id: string): Promise<Permission> {
 		return this.permissionService.findOne(id);
 	}
 
@@ -43,8 +47,12 @@ export class PermissionController {
 	@RequirePermissions('permission:update')
 	@ApiOperation({ summary: 'Update permission by ID' })
 	@ApiResponse({ status: 200, description: 'Permission updated successfully' })
+	@ApiResponse({ status: 400, description: 'Invalid MongoDB ObjectId' })
 	@ApiResponse({ status: 404, description: 'Permission not found' })
-	update(@Param('id') id: string, @Body() updatePermissionDto: UpdatePermissionDto) {
+	update(
+		@Param('id', ParseMongoIdPipe) id: string,
+		@Body() updatePermissionDto: UpdatePermissionDto,
+	): Promise<Permission> {
 		return this.permissionService.update(id, updatePermissionDto);
 	}
 
@@ -52,16 +60,18 @@ export class PermissionController {
 	@RequirePermissions('permission:delete')
 	@ApiOperation({ summary: 'Delete permission by ID' })
 	@ApiResponse({ status: 200, description: 'Permission deleted successfully' })
+	@ApiResponse({ status: 400, description: 'Invalid MongoDB ObjectId' })
 	@ApiResponse({ status: 404, description: 'Permission not found' })
-	remove(@Param('id') id: string) {
+	remove(@Param('id', ParseMongoIdPipe) id: string): Promise<Permission> {
 		return this.permissionService.remove(id);
 	}
 
 	@Post('seed')
 	@RequirePermissions('permission:create')
+	@HttpCode(HttpStatus.CREATED)
 	@ApiOperation({ summary: 'Seed default permissions' })
 	@ApiResponse({ status: 201, description: 'Default permissions seeded successfully' })
-	seedDefaultPermissions() {
+	seedDefaultPermissions(): Promise<void> {
 		return this.permissionService.seedDefaultPermissions();
 	}
 }
