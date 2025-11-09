@@ -29,13 +29,21 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 		});
 	}
 
-	async validate(payload: JwtPayload): Promise<User> {
+	async validate(payload: any): Promise<any> {
 		this.logger.log('Validating JWT payload', {
 			email: payload.email,
-			userId: payload.sub,
+			userId: payload.userId,
 			rolesCount: payload.roles?.length || 0,
+			permissionsCount: payload.permissions?.length || 0,
 		});
 
-		return await this.usersService.findOneByEmail({ email: payload.email });
+		// Return the JWT payload directly so permissions are available in guards
+		return {
+			email: payload.email,
+			userId: payload.userId,
+			roles: payload.roles || [],
+			permissions: payload.permissions || [],
+			isActive: payload.isActive,
+		};
 	}
 }

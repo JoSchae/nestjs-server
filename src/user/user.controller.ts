@@ -119,20 +119,21 @@ export class UserController {
 		return user;
 	}
 
-	@Delete('delete')
+	@Delete(':id')
 	@HttpCode(HttpStatus.NO_CONTENT)
 	@UseGuards(PermissionsGuard)
 	@RequirePermissions('user:delete')
-	@ApiOperation({ summary: 'Delete user profile' })
+	@ApiOperation({ summary: 'Delete user by ID' })
 	@ApiBearerAuth()
-	@ApiResponse({ status: 204, description: 'The user profile has been successfully deleted.' })
+	@ApiResponse({ status: 204, description: 'The user has been successfully deleted.' })
+	@ApiResponse({ status: 400, description: 'Invalid MongoDB ObjectId.' })
 	@ApiResponse({ status: 401, description: 'Unauthorized.' })
 	@ApiResponse({ status: 404, description: 'User not found.' })
-	public async deleteProfile(@Request() req: any): Promise<void> {
-		this.logger.log(`Deleting user profile for: ${req.user?.email}`);
+	public async deleteUserById(@Param('id', ParseMongoIdPipe) id: string): Promise<void> {
+		this.logger.log(`Deleting user by id: ${id}`);
 
-		await this.usersService.findOneAndDelete({ email: req.user.email });
-		this.logger.log(`User profile deleted successfully`);
+		await this.usersService.findOneAndDelete({ _id: id });
+		this.logger.log(`User deleted successfully`);
 	}
 
 	@Post(':userId/roles/:roleId')

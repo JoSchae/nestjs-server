@@ -187,14 +187,14 @@ describe('UserController', () => {
 		});
 	});
 
-	describe('deleteProfile', () => {
-		it('should delete user profile', async () => {
-			const req = { user: { email: 'test@example.com' } };
+	describe('deleteUserById', () => {
+		it('should delete user by id', async () => {
+			const userId = '507f1f77bcf86cd799439011';
 			mockUserService.findOneAndDelete.mockResolvedValue(mockUser);
 
-			await controller.deleteProfile(req);
+			await controller.deleteUserById(userId);
 
-			expect(service.findOneAndDelete).toHaveBeenCalledWith({ email: req.user.email });
+			expect(service.findOneAndDelete).toHaveBeenCalledWith({ _id: userId });
 		});
 	});
 });

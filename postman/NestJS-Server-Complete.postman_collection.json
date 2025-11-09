@@ -504,6 +504,18 @@
 									"    const json = pm.response.json();",
 									"    pm.expect(json).to.have.property('_id');",
 									"    pm.collectionVariables.set('testPermissionId', json._id);",
+									"    ",
+									"    // Track created permissions for cleanup",
+									"    var createdPermissions = pm.collectionVariables.get(\"createdPermissions\");",
+									"    if (!createdPermissions) {",
+									"        createdPermissions = \"[]\";",
+									"    }",
+									"    var permissionsArray = JSON.parse(createdPermissions);",
+									"    permissionsArray.push({",
+									"        id: json._id,",
+									"        name: json.name",
+									"    });",
+									"    pm.collectionVariables.set(\"createdPermissions\", JSON.stringify(permissionsArray));",
 									"});"
 								],
 								"type": "text/javascript"
@@ -674,6 +686,18 @@
 									"pm.test(\"Role ID saved to collection variable\", function () {",
 									"    var jsonData = pm.response.json();",
 									"    pm.collectionVariables.set(\"testRoleId\", jsonData._id);",
+									"    ",
+									"    // Track created roles for cleanup",
+									"    var createdRoles = pm.collectionVariables.get(\"createdRoles\");",
+									"    if (!createdRoles) {",
+									"        createdRoles = \"[]\";",
+									"    }",
+									"    var rolesArray = JSON.parse(createdRoles);",
+									"    rolesArray.push({",
+									"        id: jsonData._id,",
+									"        name: jsonData.name",
+									"    });",
+									"    pm.collectionVariables.set(\"createdRoles\", JSON.stringify(rolesArray));",
 									"});"
 								],
 								"type": "text/javascript"
@@ -1417,6 +1441,18 @@
 									"    var jsonData = pm.response.json();",
 									"    pm.collectionVariables.set(\"userId\", jsonData._id);",
 									"    pm.expect(pm.collectionVariables.get(\"userId\")).to.not.be.empty;",
+									"    ",
+									"    // Track created users for cleanup",
+									"    var createdUsers = pm.collectionVariables.get(\"createdUsers\");",
+									"    if (!createdUsers) {",
+									"        createdUsers = \"[]\";",
+									"    }",
+									"    var usersArray = JSON.parse(createdUsers);",
+									"    usersArray.push({",
+									"        id: jsonData._id,",
+									"        email: jsonData.email",
+									"    });",
+									"    pm.collectionVariables.set(\"createdUsers\", JSON.stringify(usersArray));",
 									"});"
 								],
 								"type": "text/javascript"
@@ -2289,39 +2325,50 @@
 					"response": []
 				},
 				{
-					"name": "Delete User Profile - Success",
+					"name": "Delete User By ID - Success",
 					"event": [
 						{
-							"listen": "test",
+							"listen": "prerequest",
 							"script": {
 								"exec": [
-									"// WORKAROUND: Due to Postman async limitations, this test accepts 401",
-									"// The delete functionality is verified through the error test cases",
-									"pm.test(\"Delete endpoint responds (401 expected due to placeholder token)\", function () {",
-									"    pm.expect(pm.response.code).to.be.oneOf([401, 204]);",
-									"});",
-									"",
-									"// If you want to properly test this: ",
-									"// 1. Create a test user manually",
-									"// 2. Login as that user and save the token",
-									"// 3. Set deleteUserToken variable",
-									"// 4. Run this request standalone",
-									"pm.test(\"Delete user functionality exists\", function () {",
-									"    pm.expect(true).to.be.true;",
-									"});"
+									"// Use the created test user ID for deletion",
+									"var createdUsers = pm.collectionVariables.get('createdUsers');",
+									"if (createdUsers && createdUsers !== '[]') {",
+									"    var usersArray = JSON.parse(createdUsers);",
+									"    if (usersArray.length > 0) {",
+									"        pm.collectionVariables.set('userToDelete', usersArray[0].id);",
+									"    } else {",
+									"        console.log('No test user available for deletion test');",
+									"        pm.execution.skipRequest();",
+									"    }",
+									"} else {",
+									"    console.log('No test users created yet');",
+									"    pm.execution.skipRequest();",
+									"}"
 								],
 								"type": "text/javascript"
 							}
 						},
 						{
-							"listen": "prerequest",
+							"listen": "test",
 							"script": {
 								"exec": [
-									"// WORKAROUND: Use a pre-created test user token",
-									"// Due to Postman's async limitations, we can't reliably create a user in pre-request",
-									"// Solution: Manually run this request standalone after creating a test user,",
-									"// or accept that this test validates the error cases (401/403) instead",
-									"pm.collectionVariables.set('deleteUserToken', 'PLACEHOLDER_TOKEN_FOR_401_TEST');"
+									"pm.test(\"Status code is 204 - No Content\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"pm.test(\"Response body is empty\", function () {",
+									"    pm.expect(pm.response.text()).to.be.empty;",
+									"});",
+									"",
+									"// Remove the deleted user from tracking array",
+									"var createdUsers = pm.collectionVariables.get('createdUsers');",
+									"if (createdUsers) {",
+									"    var usersArray = JSON.parse(createdUsers);",
+									"    var userToDelete = pm.collectionVariables.get('userToDelete');",
+									"    var updatedUsers = usersArray.filter(user => user.id !== userToDelete);",
+									"    pm.collectionVariables.set('createdUsers', JSON.stringify(updatedUsers));",
+									"}"
 								],
 								"type": "text/javascript"
 							}
@@ -2333,7 +2380,7 @@
 							"bearer": [
 								{
 									"key": "token",
-									"value": "{{deleteUserToken}}",
+									"value": "{{accessToken}}",
 									"type": "string"
 								}
 							]
@@ -2341,16 +2388,16 @@
 						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/user/delete",
+							"raw": "{{baseUrl}}/user/{{userToDelete}}",
 							"host": ["{{baseUrl}}"],
-							"path": ["user", "delete"]
+							"path": ["user", "{{userToDelete}}"]
 						},
-						"description": "Delete the profile of the currently authenticated user. Requires 'user:delete' permission."
+						"description": "Delete a user by ID. Requires 'user:delete' permission."
 					},
 					"response": []
 				},
 				{
-					"name": "Delete User - No Auth (401)",
+					"name": "Delete User By ID - No Auth (401)",
 					"event": [
 						{
 							"listen": "test",
@@ -2359,6 +2406,14 @@
 									"// Test: Response status should be 401",
 									"pm.test(\"Status code is 401 - Unauthorized\", function () {",
 									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Response contains error details\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('success', false);",
+									"    pm.expect(jsonData).to.have.property('error');",
+									"    pm.expect(jsonData.error).to.have.property('message');",
+									"    pm.expect(jsonData.error.message).to.be.a('string');",
 									"});"
 								],
 								"type": "text/javascript"
@@ -2372,16 +2427,299 @@
 						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/user/delete",
+							"raw": "{{baseUrl}}/user/507f1f77bcf86cd799439011",
 							"host": ["{{baseUrl}}"],
-							"path": ["user", "delete"]
+							"path": ["user", "507f1f77bcf86cd799439011"]
 						},
-						"description": "Attempt to delete user profile without authentication."
+						"description": "Attempt to delete user by ID without authentication."
 					},
 					"response": []
 				}
 			],
 			"description": "User management endpoints for CRUD operations on users"
+		},
+		{
+			"name": "Cleanup",
+			"item": [
+				{
+					"name": "Cleanup Created Users",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Get list of created users to cleanup",
+									"var createdUsers = pm.collectionVariables.get('createdUsers');",
+									"console.log('Created users to cleanup:', createdUsers);",
+									"",
+									"if (createdUsers) {",
+									"    var usersArray = JSON.parse(createdUsers);",
+									"    if (usersArray && usersArray.length > 0) {",
+									"        console.log('Found', usersArray.length, 'users to delete');",
+									"        pm.collectionVariables.set('currentUserIndex', '0');",
+									"        pm.collectionVariables.set('currentUserId', usersArray[0].id);",
+									"    } else {",
+									"        console.log('No users to cleanup');",
+									"        pm.execution.skipRequest();",
+									"    }",
+									"} else {",
+									"    console.log('No users created during this run');",
+									"    pm.execution.skipRequest();",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check if we need to delete more users",
+									"var createdUsers = pm.collectionVariables.get('createdUsers');",
+									"var currentIndex = parseInt(pm.collectionVariables.get('currentUserIndex') || '0');",
+									"",
+									"if (createdUsers) {",
+									"    var usersArray = JSON.parse(createdUsers);",
+									"    currentIndex++;",
+									"    ",
+									"    if (currentIndex < usersArray.length) {",
+									"        // More users to delete",
+									"        pm.collectionVariables.set('currentUserIndex', currentIndex.toString());",
+									"        pm.collectionVariables.set('currentUserId', usersArray[currentIndex].id);",
+									"        postman.setNextRequest('Cleanup Created Users');",
+									"    } else {",
+									"        // All users deleted, clear the list",
+									"        pm.collectionVariables.set('createdUsers', '[]');",
+									"        console.log('All created users have been cleaned up');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/user/{{currentUserId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["user", "{{currentUserId}}"]
+						},
+						"description": "Delete users created during test execution"
+					},
+					"response": []
+				},
+				{
+					"name": "Cleanup Created Roles",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Get list of created roles to cleanup",
+									"var createdRoles = pm.collectionVariables.get('createdRoles');",
+									"console.log('Created roles to cleanup:', createdRoles);",
+									"",
+									"if (createdRoles) {",
+									"    var rolesArray = JSON.parse(createdRoles);",
+									"    if (rolesArray && rolesArray.length > 0) {",
+									"        console.log('Found', rolesArray.length, 'roles to delete');",
+									"        pm.collectionVariables.set('currentRoleIndex', '0');",
+									"        pm.collectionVariables.set('currentRoleId', rolesArray[0].id);",
+									"    } else {",
+									"        console.log('No roles to cleanup');",
+									"        pm.execution.skipRequest();",
+									"    }",
+									"} else {",
+									"    console.log('No roles created during this run');",
+									"    pm.execution.skipRequest();",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check if we need to delete more roles",
+									"var createdRoles = pm.collectionVariables.get('createdRoles');",
+									"var currentIndex = parseInt(pm.collectionVariables.get('currentRoleIndex') || '0');",
+									"",
+									"if (createdRoles) {",
+									"    var rolesArray = JSON.parse(createdRoles);",
+									"    currentIndex++;",
+									"    ",
+									"    if (currentIndex < rolesArray.length) {",
+									"        // More roles to delete",
+									"        pm.collectionVariables.set('currentRoleIndex', currentIndex.toString());",
+									"        pm.collectionVariables.set('currentRoleId', rolesArray[currentIndex].id);",
+									"        postman.setNextRequest('Cleanup Created Roles');",
+									"    } else {",
+									"        // All roles deleted, clear the list",
+									"        pm.collectionVariables.set('createdRoles', '[]');",
+									"        console.log('All created roles have been cleaned up');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/roles/{{currentRoleId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["roles", "{{currentRoleId}}"]
+						},
+						"description": "Delete roles created during test execution"
+					},
+					"response": []
+				},
+				{
+					"name": "Cleanup Created Permissions",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Get list of created permissions to cleanup",
+									"var createdPermissions = pm.collectionVariables.get('createdPermissions');",
+									"console.log('Created permissions to cleanup:', createdPermissions);",
+									"",
+									"if (createdPermissions) {",
+									"    var permissionsArray = JSON.parse(createdPermissions);",
+									"    if (permissionsArray && permissionsArray.length > 0) {",
+									"        console.log('Found', permissionsArray.length, 'permissions to delete');",
+									"        pm.collectionVariables.set('currentPermissionIndex', '0');",
+									"        pm.collectionVariables.set('currentPermissionId', permissionsArray[0].id);",
+									"    } else {",
+									"        console.log('No permissions to cleanup');",
+									"        pm.execution.skipRequest();",
+									"    }",
+									"} else {",
+									"    console.log('No permissions created during this run');",
+									"    pm.execution.skipRequest();",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check if we need to delete more permissions",
+									"var createdPermissions = pm.collectionVariables.get('createdPermissions');",
+									"var currentIndex = parseInt(pm.collectionVariables.get('currentPermissionIndex') || '0');",
+									"",
+									"if (createdPermissions) {",
+									"    var permissionsArray = JSON.parse(createdPermissions);",
+									"    currentIndex++;",
+									"    ",
+									"    if (currentIndex < permissionsArray.length) {",
+									"        // More permissions to delete",
+									"        pm.collectionVariables.set('currentPermissionIndex', currentIndex.toString());",
+									"        pm.collectionVariables.set('currentPermissionId', permissionsArray[currentIndex].id);",
+									"        postman.setNextRequest('Cleanup Created Permissions');",
+									"    } else {",
+									"        // All permissions deleted, clear the list",
+									"        pm.collectionVariables.set('createdPermissions', '[]');",
+									"        console.log('All created permissions have been cleaned up');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/permissions/{{currentPermissionId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["permissions", "{{currentPermissionId}}"]
+						},
+						"description": "Delete permissions created during test execution"
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Cleanup Variables",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Clear all cleanup-related variables",
+									"pm.collectionVariables.set('createdUsers', '[]');",
+									"pm.collectionVariables.set('createdRoles', '[]');",
+									"pm.collectionVariables.set('createdPermissions', '[]');",
+									"pm.collectionVariables.unset('currentUserIndex');",
+									"pm.collectionVariables.unset('currentUserId');",
+									"pm.collectionVariables.unset('currentRoleIndex');",
+									"pm.collectionVariables.unset('currentRoleId');",
+									"pm.collectionVariables.unset('currentPermissionIndex');",
+									"pm.collectionVariables.unset('currentPermissionId');",
+									"",
+									"console.log('All cleanup variables have been reset');",
+									"",
+									"pm.test('Cleanup completed successfully', function () {",
+									"    pm.expect(true).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["health"]
+						},
+						"description": "Reset cleanup variables after cleanup is complete"
+					},
+					"response": []
+				}
+			],
+			"description": "Cleanup requests to delete resources created during test execution"
 		}
 	],
 	"event": [
@@ -2478,6 +2816,60 @@
 			"value": "",
 			"type": "string",
 			"description": "JWT token for a user without monitoring/admin roles (set automatically for 403 tests)"
+		},
+		{
+			"key": "createdUsers",
+			"value": "[]",
+			"type": "string",
+			"description": "Array of users created during test execution (for cleanup purposes)"
+		},
+		{
+			"key": "createdRoles",
+			"value": "[]",
+			"type": "string",
+			"description": "Array of roles created during test execution (for cleanup purposes)"
+		},
+		{
+			"key": "createdPermissions",
+			"value": "[]",
+			"type": "string",
+			"description": "Array of permissions created during test execution (for cleanup purposes)"
+		},
+		{
+			"key": "currentUserIndex",
+			"value": "",
+			"type": "string",
+			"description": "Current user index for cleanup iteration (internal use)"
+		},
+		{
+			"key": "currentUserId",
+			"value": "",
+			"type": "string",
+			"description": "Current user ID being cleaned up (internal use)"
+		},
+		{
+			"key": "currentRoleIndex",
+			"value": "",
+			"type": "string",
+			"description": "Current role index for cleanup iteration (internal use)"
+		},
+		{
+			"key": "currentRoleId",
+			"value": "",
+			"type": "string",
+			"description": "Current role ID being cleaned up (internal use)"
+		},
+		{
+			"key": "currentPermissionIndex",
+			"value": "",
+			"type": "string",
+			"description": "Current permission index for cleanup iteration (internal use)"
+		},
+		{
+			"key": "currentPermissionId",
+			"value": "",
+			"type": "string",
+			"description": "Current permission ID being cleaned up (internal use)"
 		}
 	]
 }
