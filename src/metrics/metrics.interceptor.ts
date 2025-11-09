@@ -1,6 +1,6 @@
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { tap, catchError } from 'rxjs/operators';
 import { CustomMetricsService } from './custom-metrics.service';
 
 @Injectable()
@@ -20,7 +20,20 @@ export class MetricsInterceptor implements NestInterceptor {
 				const statusCode = response.statusCode;
 
 				this.metricsService.incrementHttpRequests(method, route, statusCode);
-				this.metricsService.recordHttpRequestDuration(method, route, duration);
+				this.metricsService.recordHttpRequestDuration(method, route, statusCode, duration);
+			}),
+			catchError((error) => {
+				const duration = (Date.now() - startTime) / 1000;
+				const method = request.method;
+				const route = request.route?.path || request.url;
+				const statusCode = error.status || 500;
+				const errorType = error.name || 'UnknownError';
+
+				this.metricsService.incrementHttpRequests(method, route, statusCode);
+				this.metricsService.recordHttpRequestDuration(method, route, statusCode, duration);
+				this.metricsService.incrementHttpErrors(method, route, statusCode, errorType);
+
+				throw error;
 			}),
 		);
 	}

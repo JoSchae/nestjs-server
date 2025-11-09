@@ -45,10 +45,12 @@ coverage
 .yarn-integrity
 
 # Environment variables
-.env.local
+# Note: .env.dev is NOT ignored - it's baked into Docker images
 .env.development.local
 .env.test.local
 .env.production.local
+.env.prod
+.env.production
 
 # IDE
 .vscode

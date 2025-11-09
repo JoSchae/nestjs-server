@@ -24,7 +24,7 @@ export class SeedService implements OnModuleInit {
 	async seedDefaultData() {
 		this.logger.log('Starting comprehensive data seeding process', {
 			service: 'SeedService',
-			method: 'seedDefaultData'
+			method: 'seedDefaultData',
 		});
 
 		try {
@@ -32,63 +32,63 @@ export class SeedService implements OnModuleInit {
 			this.logger.log('Initiating permissions seeding', {
 				service: 'SeedService',
 				method: 'seedDefaultData',
-				step: 'permissions'
+				step: 'permissions',
 			});
 			await this.permissionService.seedDefaultPermissions();
 			this.logger.log('Default permissions seeded successfully', {
 				service: 'SeedService',
 				method: 'seedDefaultData',
-				step: 'permissions'
+				step: 'permissions',
 			});
 
 			// Seed default roles
 			this.logger.log('Initiating roles seeding', {
 				service: 'SeedService',
 				method: 'seedDefaultData',
-				step: 'roles'
+				step: 'roles',
 			});
 			await this.seedDefaultRoles();
 			this.logger.log('Default roles seeded successfully', {
 				service: 'SeedService',
 				method: 'seedDefaultData',
-				step: 'roles'
+				step: 'roles',
 			});
 
 			// Create super admin user if it doesn't exist
 			this.logger.log('Initiating super admin user creation', {
 				service: 'SeedService',
 				method: 'seedDefaultData',
-				step: 'super_admin'
+				step: 'super_admin',
 			});
 			await this.createSuperAdminUser();
 			this.logger.log('Super admin user checked/created successfully', {
 				service: 'SeedService',
 				method: 'seedDefaultData',
-				step: 'super_admin'
+				step: 'super_admin',
 			});
 
 			// Create monitoring user if it doesn't exist
 			this.logger.log('Initiating monitoring user creation', {
 				service: 'SeedService',
 				method: 'seedDefaultData',
-				step: 'monitoring'
+				step: 'monitoring',
 			});
 			await this.createMonitoringUser();
 			this.logger.log('Monitoring user checked/created successfully', {
 				service: 'SeedService',
 				method: 'seedDefaultData',
-				step: 'monitoring'
+				step: 'monitoring',
 			});
-			
+
 			this.logger.log('Data seeding process completed successfully', {
 				service: 'SeedService',
 				method: 'seedDefaultData',
-				status: 'completed'
+				status: 'completed',
 			});
 		} catch (error) {
 			this.logger.error('Error during comprehensive data seeding', error, {
 				service: 'SeedService',
-				method: 'seedDefaultData'
+				method: 'seedDefaultData',
 			});
 			throw error;
 		}
@@ -97,7 +97,7 @@ export class SeedService implements OnModuleInit {
 	private async seedDefaultRoles() {
 		this.logger.log('Starting default roles seeding', {
 			service: 'SeedService',
-			method: 'seedDefaultRoles'
+			method: 'seedDefaultRoles',
 		});
 
 		const roles = [
@@ -137,29 +137,28 @@ export class SeedService implements OnModuleInit {
 					roleName: roleData.name,
 					permissionCount: roleData.permissions.length,
 					service: 'SeedService',
-					method: 'seedDefaultRoles'
+					method: 'seedDefaultRoles',
 				});
 
 				// Check if role exists
 				const existingRole = await this.roleService.findByName(roleData.name).catch(() => null);
 
-				if (!existingRole) {
-					// Get permission IDs
-					const permissionIds = [];
-					for (const permissionName of roleData.permissions) {
-						try {
-							const permission = await this.permissionService.findByName(permissionName);
-							permissionIds.push((permission as any)._id);
-						} catch (error) {
-							this.logger.warn('Permission not found during role creation', {
-								permissionName,
-								roleName: roleData.name,
-								service: 'SeedService',
-								method: 'seedDefaultRoles'
-							});
-						}
+				const permissionIds = [];
+				for (const permissionName of roleData.permissions) {
+					try {
+						const permission = await this.permissionService.findByName(permissionName);
+						permissionIds.push((permission as any)._id);
+					} catch (error) {
+						this.logger.warn('Permission not found during role creation/update', {
+							permissionName,
+							roleName: roleData.name,
+							service: 'SeedService',
+							method: 'seedDefaultRoles',
+						});
 					}
+				}
 
+				if (!existingRole) {
 					// Create role
 					await this.roleService.create({
 						name: roleData.name,
@@ -172,31 +171,38 @@ export class SeedService implements OnModuleInit {
 						roleName: roleData.name,
 						permissionCount: permissionIds.length,
 						service: 'SeedService',
-						method: 'seedDefaultRoles'
+						method: 'seedDefaultRoles',
 					});
 				} else {
+					// Update existing role with current permissions
+					await this.roleService.update((existingRole as any)._id, {
+						description: roleData.description,
+						permissions: permissionIds,
+					});
+
 					existingCount++;
-					this.logger.log('Role already exists', {
+					this.logger.log('Role already exists - updated permissions', {
 						roleName: roleData.name,
+						permissionCount: permissionIds.length,
 						service: 'SeedService',
-						method: 'seedDefaultRoles'
+						method: 'seedDefaultRoles',
 					});
 				}
 			} catch (error) {
 				this.logger.error('Error creating role during seeding', error, {
 					roleName: roleData.name,
 					service: 'SeedService',
-					method: 'seedDefaultRoles'
+					method: 'seedDefaultRoles',
 				});
 			}
 		}
-		
+
 		this.logger.log('Default roles seeding completed', {
 			totalRoles: roles.length,
 			created: createdCount,
 			alreadyExisting: existingCount,
 			service: 'SeedService',
-			method: 'seedDefaultRoles'
+			method: 'seedDefaultRoles',
 		});
 	}
 
@@ -206,7 +212,7 @@ export class SeedService implements OnModuleInit {
 		this.logger.log('Processing super admin user creation', {
 			email: superAdminEmail,
 			service: 'SeedService',
-			method: 'createSuperAdminUser'
+			method: 'createSuperAdminUser',
 		});
 
 		try {
@@ -217,7 +223,7 @@ export class SeedService implements OnModuleInit {
 				this.logger.log('Super admin not found, creating new user', {
 					email: superAdminEmail,
 					service: 'SeedService',
-					method: 'createSuperAdminUser'
+					method: 'createSuperAdminUser',
 				});
 
 				// Create super admin user
@@ -239,26 +245,26 @@ export class SeedService implements OnModuleInit {
 					userId: (superAdminUser as any)._id,
 					email: superAdminEmail,
 					service: 'SeedService',
-					method: 'createSuperAdminUser'
+					method: 'createSuperAdminUser',
 				});
 				this.logger.warn('IMPORTANT: Please change the super admin password immediately!', {
 					email: superAdminEmail,
 					defaultPassword: 'SuperAdmin123!',
 					service: 'SeedService',
-					method: 'createSuperAdminUser'
+					method: 'createSuperAdminUser',
 				});
 			} else {
 				this.logger.log('Super admin user already exists', {
 					email: superAdminEmail,
 					service: 'SeedService',
-					method: 'createSuperAdminUser'
+					method: 'createSuperAdminUser',
 				});
 			}
 		} catch (error) {
 			this.logger.error('Error creating super admin user', error, {
 				email: superAdminEmail,
 				service: 'SeedService',
-				method: 'createSuperAdminUser'
+				method: 'createSuperAdminUser',
 			});
 			throw error;
 		}
@@ -270,7 +276,7 @@ export class SeedService implements OnModuleInit {
 		this.logger.log('Processing monitoring user creation', {
 			email: monitoringEmail,
 			service: 'SeedService',
-			method: 'createMonitoringUser'
+			method: 'createMonitoringUser',
 		});
 
 		try {
@@ -281,7 +287,7 @@ export class SeedService implements OnModuleInit {
 				this.logger.log('Monitoring user not found, creating new user', {
 					email: monitoringEmail,
 					service: 'SeedService',
-					method: 'createMonitoringUser'
+					method: 'createMonitoringUser',
 				});
 
 				// Create monitoring user
@@ -303,26 +309,26 @@ export class SeedService implements OnModuleInit {
 					userId: (monitoringUser as any)._id,
 					email: monitoringEmail,
 					service: 'SeedService',
-					method: 'createMonitoringUser'
+					method: 'createMonitoringUser',
 				});
 				this.logger.warn('IMPORTANT: Please change the monitoring user password for production!', {
 					email: monitoringEmail,
 					defaultPassword: 'MonitoringSystem123!',
 					service: 'SeedService',
-					method: 'createMonitoringUser'
+					method: 'createMonitoringUser',
 				});
 			} else {
 				this.logger.log('Monitoring user already exists', {
 					email: monitoringEmail,
 					service: 'SeedService',
-					method: 'createMonitoringUser'
+					method: 'createMonitoringUser',
 				});
 			}
 		} catch (error) {
 			this.logger.error('Error creating monitoring user', error, {
 				email: monitoringEmail,
 				service: 'SeedService',
-				method: 'createMonitoringUser'
+				method: 'createMonitoringUser',
 			});
 			throw error;
 		}

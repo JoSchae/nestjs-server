@@ -36,3 +36,20 @@ export class User {
 export type UserDocument = User & Document;
 
 export const UserSchema = SchemaFactory.createForClass(User);
+
+// Performance Indexes
+// 1. Compound index for common query: findOne({ email, isActive })
+//    Used in: findOneByEmailWithRoles, authentication flows
+UserSchema.index({ email: 1, isActive: 1 });
+
+// 2. Single-field index for filtering active users
+//    Used in: findAll({ isActive: true })
+UserSchema.index({ isActive: 1 });
+
+// 3. Index on roles array for role-based queries
+//    Used in: populate('roles'), finding users by role
+UserSchema.index({ roles: 1 });
+
+// 4. Index on lastLogin for sorting/filtering by activity
+//    Used in: admin dashboards, user activity reports
+UserSchema.index({ lastLogin: -1 });

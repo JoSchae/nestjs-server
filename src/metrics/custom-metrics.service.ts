@@ -5,69 +5,185 @@ import { CustomLoggerService } from '../shared/logger/custom-logger.service';
 @Injectable()
 export class CustomMetricsService {
 	private readonly logger = new CustomLoggerService();
+
+	// HTTP Metrics
 	private readonly httpRequestsTotal: Counter<string>;
 	private readonly httpRequestDuration: Histogram<string>;
+	private readonly httpErrorsTotal: Counter<string>;
+
+	// Authentication Metrics
+	private readonly authLoginAttempts: Counter<string>;
+	private readonly authLoginFailures: Counter<string>;
+	private readonly authTokenValidations: Counter<string>;
+
+	// User Metrics
+	private readonly userRegistrations: Counter<string>;
 	private readonly activeUsers: Gauge<string>;
+	private readonly totalUsers: Gauge<string>;
+
+	// Database Metrics
 	private readonly dbConnections: Gauge<string>;
+	private readonly dbConnectionsAvailable: Gauge<string>;
+	private readonly dbQueryDuration: Histogram<string>;
+	private readonly dbQueryErrors: Counter<string>;
+
+	// Cache Metrics
+	private readonly cacheHits: Counter<string>;
+	private readonly cacheMisses: Counter<string>;
+	private readonly cacheSize: Gauge<string>;
 
 	constructor() {
 		this.logger.setContext(CustomMetricsService.name);
-		
+
 		this.logger.log('Initializing custom metrics service', {
 			service: 'CustomMetricsService',
-			method: 'constructor'
+			method: 'constructor',
 		});
 
-		// HTTP request counter
+		// HTTP Metrics
 		this.httpRequestsTotal = new Counter({
 			name: 'http_requests_total',
 			help: 'Total number of HTTP requests',
 			labelNames: ['method', 'route', 'status_code'],
 		});
 
-		// HTTP request duration
 		this.httpRequestDuration = new Histogram({
 			name: 'http_request_duration_seconds',
 			help: 'Duration of HTTP requests in seconds',
-			labelNames: ['method', 'route'],
-			buckets: [0.1, 0.5, 1, 2, 5],
+			labelNames: ['method', 'route', 'status_code'],
+			buckets: [0.01, 0.05, 0.1, 0.5, 1, 2, 5, 10],
 		});
 
-		// Active users gauge
+		this.httpErrorsTotal = new Counter({
+			name: 'http_errors_total',
+			help: 'Total number of HTTP errors',
+			labelNames: ['method', 'route', 'status_code', 'error_type'],
+		});
+
+		// Authentication Metrics
+		this.authLoginAttempts = new Counter({
+			name: 'auth_login_attempts_total',
+			help: 'Total number of login attempts',
+			labelNames: ['status'],
+		});
+
+		this.authLoginFailures = new Counter({
+			name: 'auth_login_failures_total',
+			help: 'Total number of failed login attempts',
+			labelNames: ['reason'],
+		});
+
+		this.authTokenValidations = new Counter({
+			name: 'auth_token_validations_total',
+			help: 'Total number of token validations',
+			labelNames: ['status'],
+		});
+
+		// User Metrics
+		this.userRegistrations = new Counter({
+			name: 'user_registrations_total',
+			help: 'Total number of user registrations',
+			labelNames: ['status'],
+		});
+
 		this.activeUsers = new Gauge({
 			name: 'active_users_total',
 			help: 'Number of currently active users',
 		});
 
-		// Database connections gauge
+		this.totalUsers = new Gauge({
+			name: 'users_total',
+			help: 'Total number of registered users',
+		});
+
+		// Database Metrics
 		this.dbConnections = new Gauge({
 			name: 'database_connections_active',
 			help: 'Number of active database connections',
 		});
 
-		// Register metrics
+		this.dbConnectionsAvailable = new Gauge({
+			name: 'database_connections_available',
+			help: 'Number of available database connections',
+		});
+
+		this.dbQueryDuration = new Histogram({
+			name: 'database_query_duration_seconds',
+			help: 'Duration of database queries in seconds',
+			labelNames: ['operation', 'collection'],
+			buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 2],
+		});
+
+		this.dbQueryErrors = new Counter({
+			name: 'database_query_errors_total',
+			help: 'Total number of database query errors',
+			labelNames: ['operation', 'collection', 'error_type'],
+		});
+
+		// Cache Metrics
+		this.cacheHits = new Counter({
+			name: 'cache_hits_total',
+			help: 'Total number of cache hits',
+			labelNames: ['cache_key'],
+		});
+
+		this.cacheMisses = new Counter({
+			name: 'cache_misses_total',
+			help: 'Total number of cache misses',
+			labelNames: ['cache_key'],
+		});
+
+		this.cacheSize = new Gauge({
+			name: 'cache_size_bytes',
+			help: 'Current size of cache in bytes',
+			labelNames: ['cache_name'],
+		});
+
+		// Register all metrics
 		register.registerMetric(this.httpRequestsTotal);
 		register.registerMetric(this.httpRequestDuration);
+		register.registerMetric(this.httpErrorsTotal);
+		register.registerMetric(this.authLoginAttempts);
+		register.registerMetric(this.authLoginFailures);
+		register.registerMetric(this.authTokenValidations);
+		register.registerMetric(this.userRegistrations);
 		register.registerMetric(this.activeUsers);
+		register.registerMetric(this.totalUsers);
 		register.registerMetric(this.dbConnections);
-		
+		register.registerMetric(this.dbConnectionsAvailable);
+		register.registerMetric(this.dbQueryDuration);
+		register.registerMetric(this.dbQueryErrors);
+		register.registerMetric(this.cacheHits);
+		register.registerMetric(this.cacheMisses);
+		register.registerMetric(this.cacheSize);
+
 		this.logger.log('Custom metrics initialized successfully', {
-			metricsCount: 4,
-			metrics: ['http_requests_total', 'http_request_duration_seconds', 'active_users_total', 'database_connections_active'],
+			metricsCount: 16,
+			metrics: [
+				'http_requests_total',
+				'http_request_duration_seconds',
+				'http_errors_total',
+				'auth_login_attempts_total',
+				'auth_login_failures_total',
+				'auth_token_validations_total',
+				'user_registrations_total',
+				'active_users_total',
+				'users_total',
+				'database_connections_active',
+				'database_connections_available',
+				'database_query_duration_seconds',
+				'database_query_errors_total',
+				'cache_hits_total',
+				'cache_misses_total',
+				'cache_size_bytes',
+			],
 			service: 'CustomMetricsService',
-			method: 'constructor'
+			method: 'constructor',
 		});
 	}
 
+	// HTTP Metrics Methods
 	incrementHttpRequests(method: string, route: string, statusCode: number) {
-		this.logger.log('Incrementing HTTP request counter', {
-			httpMethod: method,
-			route,
-			statusCode,
-			service: 'CustomMetricsService',
-			method: 'incrementHttpRequests'
-		});
-
 		this.httpRequestsTotal.inc({
 			method,
 			route,
@@ -75,35 +191,78 @@ export class CustomMetricsService {
 		});
 	}
 
-	recordHttpRequestDuration(method: string, route: string, duration: number) {
-		this.logger.log('Recording HTTP request duration', {
-			httpMethod: method,
-			route,
+	recordHttpRequestDuration(method: string, route: string, statusCode: number, duration: number) {
+		this.httpRequestDuration.observe(
+			{
+				method,
+				route,
+				status_code: statusCode.toString(),
+			},
 			duration,
-			service: 'CustomMetricsService',
-			method: 'recordHttpRequestDuration'
-		});
+		);
+	}
 
-		this.httpRequestDuration.observe({ method, route }, duration);
+	incrementHttpErrors(method: string, route: string, statusCode: number, errorType: string) {
+		this.httpErrorsTotal.inc({
+			method,
+			route,
+			status_code: statusCode.toString(),
+			error_type: errorType,
+		});
+	}
+
+	// Authentication Metrics Methods
+	incrementLoginAttempts(status: 'success' | 'failure') {
+		this.authLoginAttempts.inc({ status });
+	}
+
+	incrementLoginFailures(reason: string) {
+		this.authLoginFailures.inc({ reason });
+	}
+
+	incrementTokenValidations(status: 'valid' | 'invalid' | 'expired') {
+		this.authTokenValidations.inc({ status });
+	}
+
+	// User Metrics Methods
+	incrementUserRegistrations(status: 'success' | 'failure') {
+		this.userRegistrations.inc({ status });
 	}
 
 	setActiveUsers(count: number) {
-		this.logger.log('Updating active users count', {
-			count,
-			service: 'CustomMetricsService',
-			method: 'setActiveUsers'
-		});
-
 		this.activeUsers.set(count);
 	}
 
-	setDbConnections(count: number) {
-		this.logger.log('Updating database connections count', {
-			count,
-			service: 'CustomMetricsService',
-			method: 'setDbConnections'
-		});
+	setTotalUsers(count: number) {
+		this.totalUsers.set(count);
+	}
 
-		this.dbConnections.set(count);
+	// Database Metrics Methods
+	setDbConnections(active: number, available?: number) {
+		this.dbConnections.set(active);
+		if (available !== undefined) {
+			this.dbConnectionsAvailable.set(available);
+		}
+	}
+
+	recordDbQueryDuration(operation: string, collection: string, duration: number) {
+		this.dbQueryDuration.observe({ operation, collection }, duration);
+	}
+
+	incrementDbQueryErrors(operation: string, collection: string, errorType: string) {
+		this.dbQueryErrors.inc({ operation, collection, error_type: errorType });
+	}
+
+	// Cache Metrics Methods
+	incrementCacheHits(cacheKey: string) {
+		this.cacheHits.inc({ cache_key: cacheKey });
+	}
+
+	incrementCacheMisses(cacheKey: string) {
+		this.cacheMisses.inc({ cache_key: cacheKey });
+	}
+
+	setCacheSize(cacheName: string, sizeBytes: number) {
+		this.cacheSize.set({ cache_name: cacheName }, sizeBytes);
 	}
 }

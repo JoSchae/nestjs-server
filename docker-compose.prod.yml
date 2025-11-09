@@ -1,37 +1,47 @@
+# Production Override - Use with base
+# Usage: docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml up
+# Note: This uses pre-built images from registry (no build context)
+
 services:
     nestjs:
         image: johannesschaefer/nestjs:prod
-        build:
-            target: prod
-            args:
-                - NODE_ENV=prod
         command: npm run start:prod
-
-    nginx:
         volumes:
-            - /etc/ssl/certs:/etc/ssl/certs:ro
-            - /etc/ssl/private:/etc/ssl/private:ro
-        ports:
-            - '80:80'
-            - '443:443'
-        depends_on:
-            - nestjs
-    mongodb-exporter:
-        image: percona/mongodb_exporter:0.47.1
-        container_name: mongodb-exporter
+            # Override baked-in .env.dev with production configuration
+            - ./.env.prod:/etc/app/.env:ro
+
+    mongodb:
+        image: johannesschaefer/mongo:prod
         env_file:
             - .env.prod
         environment:
-            - MONGODB_HOST=${MONGO_DB_HOSTNAME}
-            - MONGODB_PORT=${MONGO_DB_PORT}
+            - MONGO_INITDB_DATABASE=${MONGO_DB_DATABASE}
+
+    nginx:
+        image: johannesschaefer/nginx:prod
+        ports:
+            - "80:80"
+            - "443:443"
+        volumes:
+            # Mount SSL certificates for HTTPS
+            - /etc/ssl/certs/cloudflare-origin-fullchain.pem:/etc/ssl/certs/cloudflare-origin-fullchain.pem:ro
+            - /etc/ssl/private/cloudflare-origin.key:/etc/ssl/private/cloudflare-origin.key:ro
+
+    mongodb-exporter:
+        env_file:
+            - .env.prod
+        environment:
+            # Variables from .env.production file are substituted here by Docker Compose
+            # Standardized: credentials passed separately (no URL encoding needed)
+            - MONGODB_URI=mongodb://${MONGO_DB_HOSTNAME}:${MONGO_DB_PORT}/${MONGO_DB_DATABASE}?authSource=admin
             - MONGODB_USERNAME=${MONGO_DB_METRICS_USERNAME}
             - MONGODB_PASSWORD=${MONGO_DB_METRICS_PASSWORD}
-            - MONGODB_DATABASE=${MONGO_DB_DATABASE}
-            - MONGODB_AUTH_SOURCE=admin
-            - MONGODB_URI=mongodb://${MONGO_DB_METRICS_USERNAME}:${MONGO_DB_METRICS_PASSWORD}@${MONGO_DB_HOSTNAME}:${MONGO_DB_PORT}/${MONGO_DB_DATABASE}?authSource=${MONGODB_AUTH_SOURCE}
-        ports:
-            - '9216:9216'
-        depends_on:
-            - mongodb
-        networks:
-            - app-network
+# Production-specific ARM override (if needed)
+# Additional file: docker-compose.arm.yml
+# services:
+#     nestjs:
+#         platform: linux/arm64
+#     mongodb:
+#         platform: linux/arm64
+#     nginx:
+#         platform: linux/arm64

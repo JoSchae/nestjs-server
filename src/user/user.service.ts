@@ -1,17 +1,25 @@
-import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { ConfigService } from '@nestjs/config';
 import { Model, Types } from 'mongoose';
-import { AuthService } from 'src/auth/auth.service';
 import { User, UserDocument } from 'src/user/model/user.model';
 import { CustomLoggerService } from '../shared/logger/custom-logger.service';
+import { CacheService } from '../shared/cache/cache.service';
+import { CacheInvalidationService } from '../shared/cache/cache-invalidation.service';
+import { CacheKeyGenerator } from '../shared/cache/cache-key.generator';
+import { PasswordService } from 'src/shared/password/password.service';
+import { RegExpConstants } from 'src/shared/constants/regexp';
 
 @Injectable()
 export class UserService {
 	private readonly logger = new CustomLoggerService();
-	
+
 	constructor(
 		@InjectModel(User.name) private userModel: Model<UserDocument>,
-		@Inject(forwardRef(() => AuthService)) private authService: AuthService,
+		private readonly passwordService: PasswordService,
+		private readonly cacheService: CacheService,
+		private readonly cacheInvalidation: CacheInvalidationService,
+		private readonly configService: ConfigService,
 	) {
 		this.logger.setContext(UserService.name);
 	}
@@ -21,26 +29,26 @@ export class UserService {
 			hasPassword: withPassword,
 			queryFields: Object.keys(query),
 			service: 'UserService',
-			method: 'findOneByEmail'
+			method: 'findOneByEmail',
 		});
-		
+
 		try {
 			const user = await this.userModel.findOne(query).select(`${withPassword ? '+' : '-'}password`);
-			
+
 			this.logger.log('User search completed', {
 				found: !!user,
 				hasPassword: withPassword,
 				service: 'UserService',
-				method: 'findOneByEmail'
+				method: 'findOneByEmail',
 			});
-			
+
 			return user;
 		} catch (error) {
 			this.logger.error('Failed to find user by email', error, {
 				queryFields: Object.keys(query),
 				hasPassword: withPassword,
 				service: 'UserService',
-				method: 'findOneByEmail'
+				method: 'findOneByEmail',
 			});
 			throw error;
 		}
@@ -50,36 +58,60 @@ export class UserService {
 		this.logger.log('Searching for user with roles', {
 			email,
 			service: 'UserService',
-			method: 'findOneByEmailWithRoles'
+			method: 'findOneByEmailWithRoles',
 		});
-		
+
+		if (!email || email.trim() === '') {
+			this.logger.warn('Empty email provided for user search', {
+				email,
+				service: 'UserService',
+				method: 'findOneByEmailWithRoles',
+			});
+			throw new BadRequestException('Email is required');
+		}
+
 		try {
-			const user = await this.userModel
-				.findOne({ email, isActive: true })
-				.populate({
-					path: 'roles',
-					model: 'Role',
-					populate: {
-						path: 'permissions',
-						model: 'Permission',
-					},
-				})
-				.exec();
-			
+			const ttl = this.configService.get<number>('cache.ttl.medium');
+			const user = await this.cacheService.wrap<any>(
+				CacheKeyGenerator.user.withRoles(email),
+				async () => {
+					const result = await this.userModel
+						.findOne({ email, isActive: true })
+						.populate({
+							path: 'roles',
+							model: 'Role',
+							populate: {
+								path: 'permissions',
+								model: 'Permission',
+							},
+						})
+						.exec();
+
+					if (!result) {
+						throw new NotFoundException(`User with email ${email} not found or inactive`);
+					}
+					return result;
+				},
+				ttl,
+			);
+
 			this.logger.log('User with roles search completed', {
 				found: !!user,
 				email,
 				roleCount: user?.roles?.length || 0,
 				service: 'UserService',
-				method: 'findOneByEmailWithRoles'
+				method: 'findOneByEmailWithRoles',
 			});
-			
+
 			return user;
 		} catch (error) {
+			if (error instanceof NotFoundException || error instanceof BadRequestException) {
+				throw error;
+			}
 			this.logger.error('Failed to find user with roles', error, {
 				email,
 				service: 'UserService',
-				method: 'findOneByEmailWithRoles'
+				method: 'findOneByEmailWithRoles',
 			});
 			throw error;
 		}
@@ -91,27 +123,105 @@ export class UserService {
 			firstName: user.firstName,
 			lastName: user.lastName,
 			service: 'UserService',
-			method: 'create'
+			method: 'create',
 		});
-		
+
+		// Input validation
+		if (!user) {
+			this.logger.warn('User creation failed: No user data provided', {
+				service: 'UserService',
+				method: 'create',
+			});
+			throw new BadRequestException('User data is required');
+		}
+
+		if (!user.email || user.email.trim() === '') {
+			this.logger.warn('User creation failed: Empty email provided', {
+				service: 'UserService',
+				method: 'create',
+			});
+			throw new BadRequestException('Email is required');
+		}
+
+		if (!user.password || user.password.trim() === '') {
+			this.logger.warn('User creation failed: Empty password provided', {
+				email: user.email,
+				service: 'UserService',
+				method: 'create',
+			});
+			throw new BadRequestException('Password is required');
+		}
+
+		if (!user.firstName || user.firstName.trim() === '') {
+			this.logger.warn('User creation failed: Empty first name provided', {
+				email: user.email,
+				service: 'UserService',
+				method: 'create',
+			});
+			throw new BadRequestException('First name is required');
+		}
+
+		if (!user.lastName || user.lastName.trim() === '') {
+			this.logger.warn('User creation failed: Empty last name provided', {
+				email: user.email,
+				service: 'UserService',
+				method: 'create',
+			});
+			throw new BadRequestException('Last name is required');
+		}
+
+		// Email format validation
+		const emailRegex = new RegExp(RegExpConstants.EMAIL);
+		if (!emailRegex.test(user.email)) {
+			this.logger.warn('User creation failed: Invalid email format', {
+				email: user.email,
+				service: 'UserService',
+				method: 'create',
+			});
+			throw new BadRequestException('Invalid email format');
+		}
+
 		try {
-			user.password = await this.authService.getHashedPassword(user.password);
+			// Check if user already exists
+			const existingUser = await this.userModel.findOne({ email: user.email.toLowerCase() });
+			if (existingUser) {
+				this.logger.warn('User creation failed: Email already exists', {
+					email: user.email,
+					existingUserId: existingUser._id,
+					service: 'UserService',
+					method: 'create',
+				});
+				throw new ConflictException(`User with email ${user.email} already exists`);
+			}
+
+			// Normalize email to lowercase
+			user.email = user.email.toLowerCase();
+
+			// Hash password
+			user.password = await this.passwordService.hash(user.password);
+
 			const newUser = new this.userModel(user);
 			const savedUser = await newUser.save();
-			
+
+			// Invalidate user cache (though new users won't be in cache yet)
+			await this.cacheService.del(CacheKeyGenerator.user.all());
+
 			this.logger.log('User created successfully', {
 				userId: savedUser._id,
 				email: savedUser.email,
 				service: 'UserService',
-				method: 'create'
+				method: 'create',
 			});
-			
+
 			return savedUser;
 		} catch (error) {
+			if (error instanceof BadRequestException || error instanceof ConflictException) {
+				throw error;
+			}
 			this.logger.error('Failed to create user', error, {
 				email: user.email,
 				service: 'UserService',
-				method: 'create'
+				method: 'create',
 			});
 			throw error;
 		}
@@ -122,25 +232,58 @@ export class UserService {
 			queryFields: Object.keys(query),
 			updateFields: Object.keys(payload),
 			service: 'UserService',
-			method: 'findOneAndUpdate'
+			method: 'findOneAndUpdate',
 		});
-		
+
+		// Validate query and payload
+		if (!query || Object.keys(query).length === 0) {
+			this.logger.warn('Empty query provided for user update', {
+				service: 'UserService',
+				method: 'findOneAndUpdate',
+			});
+			throw new BadRequestException('Query is required for user update');
+		}
+
+		if (!payload || Object.keys(payload).length === 0) {
+			this.logger.warn('Empty payload provided for user update', {
+				queryFields: Object.keys(query),
+				service: 'UserService',
+				method: 'findOneAndUpdate',
+			});
+			throw new BadRequestException('Update data is required');
+		}
+
 		try {
 			const updatedUser = await this.userModel.findOneAndUpdate(query, payload, { new: true });
-			
+
+			if (!updatedUser) {
+				this.logger.warn('User not found for update', {
+					queryFields: Object.keys(query),
+					service: 'UserService',
+					method: 'findOneAndUpdate',
+				});
+				throw new NotFoundException('User not found for update');
+			}
+
+			// Invalidate user caches
+			await this.cacheInvalidation.invalidateUser(updatedUser._id.toString(), updatedUser.email);
+
 			this.logger.log('User updated successfully', {
 				found: !!updatedUser,
 				userId: updatedUser?._id,
 				service: 'UserService',
-				method: 'findOneAndUpdate'
+				method: 'findOneAndUpdate',
 			});
-			
+
 			return updatedUser;
 		} catch (error) {
+			if (error instanceof NotFoundException || error instanceof BadRequestException) {
+				throw error;
+			}
 			this.logger.error('Failed to update user', error, {
 				queryFields: Object.keys(query),
 				service: 'UserService',
-				method: 'findOneAndUpdate'
+				method: 'findOneAndUpdate',
 			});
 			throw error;
 		}
@@ -150,25 +293,49 @@ export class UserService {
 		this.logger.log('Deleting user', {
 			queryFields: Object.keys(query),
 			service: 'UserService',
-			method: 'findOneAndDelete'
+			method: 'findOneAndDelete',
 		});
-		
+
+		// Validate query
+		if (!query || Object.keys(query).length === 0) {
+			this.logger.warn('Empty query provided for user deletion', {
+				service: 'UserService',
+				method: 'findOneAndDelete',
+			});
+			throw new BadRequestException('Query is required for user deletion');
+		}
+
 		try {
 			const deletedUser = await this.userModel.findOneAndDelete(query);
-			
+
+			if (!deletedUser) {
+				this.logger.warn('User not found for deletion', {
+					queryFields: Object.keys(query),
+					service: 'UserService',
+					method: 'findOneAndDelete',
+				});
+				throw new NotFoundException('User not found for deletion');
+			}
+
+			// Invalidate user caches
+			await this.cacheInvalidation.invalidateUser(deletedUser._id.toString(), deletedUser.email);
+
 			this.logger.log('User deleted successfully', {
 				found: !!deletedUser,
 				userId: deletedUser?._id,
 				service: 'UserService',
-				method: 'findOneAndDelete'
+				method: 'findOneAndDelete',
 			});
-			
+
 			return deletedUser;
 		} catch (error) {
+			if (error instanceof NotFoundException || error instanceof BadRequestException) {
+				throw error;
+			}
 			this.logger.error('Failed to delete user', error, {
 				queryFields: Object.keys(query),
 				service: 'UserService',
-				method: 'findOneAndDelete'
+				method: 'findOneAndDelete',
 			});
 			throw error;
 		}
@@ -179,7 +346,7 @@ export class UserService {
 			userId,
 			roleId,
 			service: 'UserService',
-			method: 'assignRoleToUser'
+			method: 'assignRoleToUser',
 		});
 
 		if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(roleId)) {
@@ -189,7 +356,7 @@ export class UserService {
 				userIdValid: Types.ObjectId.isValid(userId),
 				roleIdValid: Types.ObjectId.isValid(roleId),
 				service: 'UserService',
-				method: 'assignRoleToUser'
+				method: 'assignRoleToUser',
 			});
 			throw new NotFoundException('Invalid user or role ID');
 		}
@@ -205,19 +372,22 @@ export class UserService {
 					userId,
 					roleId,
 					service: 'UserService',
-					method: 'assignRoleToUser'
+					method: 'assignRoleToUser',
 				});
 				throw new NotFoundException(`User with ID ${userId} not found`);
 			}
-			
+
+			// Invalidate user caches (roles changed)
+			await this.cacheInvalidation.invalidateUser(userId, user.email);
+
 			this.logger.log('Role assigned to user successfully', {
 				userId,
 				roleId,
 				totalRoles: user.roles?.length || 0,
 				service: 'UserService',
-				method: 'assignRoleToUser'
+				method: 'assignRoleToUser',
 			});
-			
+
 			return user;
 		} catch (error) {
 			if (error instanceof NotFoundException) {
@@ -227,7 +397,7 @@ export class UserService {
 				userId,
 				roleId,
 				service: 'UserService',
-				method: 'assignRoleToUser'
+				method: 'assignRoleToUser',
 			});
 			throw error;
 		}
@@ -238,7 +408,7 @@ export class UserService {
 			userId,
 			roleId,
 			service: 'UserService',
-			method: 'removeRoleFromUser'
+			method: 'removeRoleFromUser',
 		});
 
 		if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(roleId)) {
@@ -248,7 +418,7 @@ export class UserService {
 				userIdValid: Types.ObjectId.isValid(userId),
 				roleIdValid: Types.ObjectId.isValid(roleId),
 				service: 'UserService',
-				method: 'removeRoleFromUser'
+				method: 'removeRoleFromUser',
 			});
 			throw new NotFoundException('Invalid user or role ID');
 		}
@@ -264,19 +434,22 @@ export class UserService {
 					userId,
 					roleId,
 					service: 'UserService',
-					method: 'removeRoleFromUser'
+					method: 'removeRoleFromUser',
 				});
 				throw new NotFoundException(`User with ID ${userId} not found`);
 			}
-			
+
+			// Invalidate user caches (roles changed)
+			await this.cacheInvalidation.invalidateUser(userId, user.email);
+
 			this.logger.log('Role removed from user successfully', {
 				userId,
 				roleId,
 				remainingRoles: user.roles?.length || 0,
 				service: 'UserService',
-				method: 'removeRoleFromUser'
+				method: 'removeRoleFromUser',
 			});
-			
+
 			return user;
 		} catch (error) {
 			if (error instanceof NotFoundException) {
@@ -286,7 +459,7 @@ export class UserService {
 				userId,
 				roleId,
 				service: 'UserService',
-				method: 'removeRoleFromUser'
+				method: 'removeRoleFromUser',
 			});
 			throw error;
 		}
@@ -295,23 +468,24 @@ export class UserService {
 	public async findAll(): Promise<User[]> {
 		this.logger.log('Retrieving all active users', {
 			service: 'UserService',
-			method: 'findAll'
+			method: 'findAll',
 		});
-		
+
 		try {
-			const users = await this.userModel.find({ isActive: true }).populate('roles').exec();
-			
+			// Using lean() for better performance on read-only operations
+			const users = await this.userModel.find({ isActive: true }).populate('roles').lean().exec();
+
 			this.logger.log('All users retrieved successfully', {
 				totalUsers: users.length,
 				service: 'UserService',
-				method: 'findAll'
+				method: 'findAll',
 			});
-			
+
 			return users;
 		} catch (error) {
 			this.logger.error('Failed to retrieve all users', error, {
 				service: 'UserService',
-				method: 'findAll'
+				method: 'findAll',
 			});
 			throw error;
 		}
@@ -321,38 +495,40 @@ export class UserService {
 		this.logger.log('Finding user by ID', {
 			userId: id,
 			service: 'UserService',
-			method: 'findById'
+			method: 'findById',
 		});
 
 		if (!Types.ObjectId.isValid(id)) {
 			this.logger.warn('Invalid user ID provided', {
 				userId: id,
 				service: 'UserService',
-				method: 'findById'
+				method: 'findById',
 			});
 			throw new NotFoundException(`Invalid user ID: ${id}`);
 		}
 
 		try {
-			const user = await this.userModel.findById(id).populate('roles').exec();
-			
-			if (!user) {
-				this.logger.warn('User not found by ID', {
-					userId: id,
-					service: 'UserService',
-					method: 'findById'
-				});
-				throw new NotFoundException(`User with ID ${id} not found`);
-			}
-			
+			const ttl = this.configService.get<number>('cache.ttl.medium');
+			const user = await this.cacheService.wrap<User>(
+				CacheKeyGenerator.user.byId(id),
+				async () => {
+					const result = await this.userModel.findById(id).populate('roles').exec();
+					if (!result) {
+						throw new NotFoundException(`User with ID ${id} not found`);
+					}
+					return result;
+				},
+				ttl,
+			);
+
 			this.logger.log('User found by ID successfully', {
 				userId: id,
 				email: user.email,
 				roleCount: user.roles?.length || 0,
 				service: 'UserService',
-				method: 'findById'
+				method: 'findById',
 			});
-			
+
 			return user;
 		} catch (error) {
 			if (error instanceof NotFoundException) {
@@ -361,7 +537,7 @@ export class UserService {
 			this.logger.error('Failed to find user by ID', error, {
 				userId: id,
 				service: 'UserService',
-				method: 'findById'
+				method: 'findById',
 			});
 			throw error;
 		}
@@ -371,23 +547,23 @@ export class UserService {
 		this.logger.log('Updating last login timestamp', {
 			userId,
 			service: 'UserService',
-			method: 'updateLastLogin'
+			method: 'updateLastLogin',
 		});
-		
+
 		try {
 			await this.userModel.findByIdAndUpdate(userId, { lastLogin: new Date() });
-			
+
 			this.logger.log('Last login updated successfully', {
 				userId,
 				timestamp: new Date().toISOString(),
 				service: 'UserService',
-				method: 'updateLastLogin'
+				method: 'updateLastLogin',
 			});
 		} catch (error) {
 			this.logger.error('Failed to update last login', error, {
 				userId,
 				service: 'UserService',
-				method: 'updateLastLogin'
+				method: 'updateLastLogin',
 			});
 			throw error;
 		}

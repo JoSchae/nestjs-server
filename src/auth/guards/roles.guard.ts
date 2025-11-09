@@ -1,14 +1,18 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { Request } from 'express';
 import { ROLES_KEY } from '../decorators/roles.decorator';
-import { UserService } from '../../user/user.service';
+import { JwtPayload } from '../types/jwt-payload.interface';
+
+interface RequestWithUser extends Request {
+	user: JwtPayload;
+}
 
 @Injectable()
 export class RolesGuard implements CanActivate {
-	constructor(
-		private reflector: Reflector,
-		private userService: UserService,
-	) {}
+	private readonly logger = new Logger(RolesGuard.name);
+
+	constructor(private reflector: Reflector) {}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
 		const requiredRoles = this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
@@ -16,38 +20,47 @@ export class RolesGuard implements CanActivate {
 			context.getClass(),
 		]);
 
-		if (!requiredRoles) {
+		if (!requiredRoles || requiredRoles.length === 0) {
+			this.logger.log('No roles required for this route');
 			return true;
 		}
 
-		const request = context.switchToHttp().getRequest();
-		const user = request.user;
+		const request: RequestWithUser = context.switchToHttp().getRequest();
+		const user: JwtPayload = request.user;
 
-		if (!user) {
+		if (!user || !user.email) {
+			this.logger.warn('User not authenticated or missing email');
 			throw new ForbiddenException('User not authenticated');
 		}
 
-		// Get user with populated roles
-		const userWithRoles = await this.userService.findOneByEmailWithRoles(user.email);
-		if (!userWithRoles) {
-			throw new ForbiddenException('User not found');
-		}
+		try {
+			// Get roles directly from JWT payload (no database query needed!)
+			const userRoles: string[] = user.roles || [];
 
-		// Extract role names from user's roles
-		const userRoles = userWithRoles.roles?.map((role) => role.name) || [];
+			// Check for super admin role
+			if (userRoles.includes('super_admin')) {
+				this.logger.log(`Super admin access granted for user: ${user.email}`);
+				return true;
+			}
 
-		// Check for super admin role
-		if (userRoles.includes('super_admin')) {
+			// Check if user has any of the required roles
+			const hasRequiredRole = requiredRoles.some((role) => userRoles.includes(role));
+
+			if (!hasRequiredRole) {
+				this.logger.warn(
+					`Insufficient role access for user: ${user.email}. User roles: ${userRoles.join(', ')}, Required: ${requiredRoles.join(', ')}`,
+				);
+				throw new ForbiddenException(`Insufficient role access. Required roles: ${requiredRoles.join(', ')}`);
+			}
+
+			this.logger.log(`Role check successful for user: ${user.email}, roles: ${requiredRoles.join(', ')}`);
 			return true;
+		} catch (error) {
+			if (error instanceof ForbiddenException) {
+				throw error;
+			}
+			this.logger.error(`Error checking roles for user: ${user.email}`, error.stack);
+			throw new ForbiddenException('Error validating roles');
 		}
-
-		// Check if user has any of the required roles
-		const hasRequiredRole = requiredRoles.some((role) => userRoles.includes(role));
-
-		if (!hasRequiredRole) {
-			throw new ForbiddenException(`Insufficient role access. Required roles: ${requiredRoles.join(', ')}`);
-		}
-
-		return true;
 	}
 }
