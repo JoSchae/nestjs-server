@@ -24,16 +24,24 @@ export class UserService {
 		this.logger.setContext(UserService.name);
 	}
 
-	public async findOneByEmail(query: any, withPassword = true): Promise<any> {
+	public async findOneByEmail(query: { email: string }, withPassword = true): Promise<any> {
+		// Sanitize query to prevent NoSQL injection - only allow email field
+		if (!query || typeof query.email !== 'string') {
+			throw new BadRequestException('Valid email is required');
+		}
+
+		// Create sanitized query with only email field
+		const sanitizedQuery = { email: query.email };
+
 		this.logger.log('Searching for user by email', {
 			hasPassword: withPassword,
-			queryFields: Object.keys(query),
+			queryFields: Object.keys(sanitizedQuery),
 			service: 'UserService',
 			method: 'findOneByEmail',
 		});
 
 		try {
-			const user = await this.userModel.findOne(query).select(`${withPassword ? '+' : '-'}password`);
+			const user = await this.userModel.findOne(sanitizedQuery).select(`${withPassword ? '+' : '-'}password`);
 
 			this.logger.log('User search completed', {
 				found: !!user,
@@ -227,34 +235,52 @@ export class UserService {
 		}
 	}
 
-	public async findOneAndUpdate(query: any, payload: any): Promise<User> {
+	public async findOneAndUpdate(query: { email: string } | { _id: string }, payload: any): Promise<User> {
+		// Sanitize query to prevent NoSQL injection - only allow email or _id
+		let sanitizedQuery: { email?: string; _id?: string } = {};
+
+		if ('email' in query && typeof query.email === 'string') {
+			sanitizedQuery.email = query.email;
+		} else if ('_id' in query && typeof query._id === 'string') {
+			sanitizedQuery._id = query._id;
+		} else {
+			throw new BadRequestException('Valid email or _id is required for user update');
+		}
+
 		this.logger.log('Updating user', {
-			queryFields: Object.keys(query),
+			queryFields: Object.keys(sanitizedQuery),
 			updateFields: Object.keys(payload),
 			service: 'UserService',
 			method: 'findOneAndUpdate',
 		});
 
-		// Validate query and payload
-		if (!query || Object.keys(query).length === 0) {
-			this.logger.warn('Empty query provided for user update', {
-				service: 'UserService',
-				method: 'findOneAndUpdate',
-			});
-			throw new BadRequestException('Query is required for user update');
-		}
-
+		// Validate payload
 		if (!payload || Object.keys(payload).length === 0) {
 			this.logger.warn('Empty payload provided for user update', {
-				queryFields: Object.keys(query),
+				queryFields: Object.keys(sanitizedQuery),
 				service: 'UserService',
 				method: 'findOneAndUpdate',
 			});
 			throw new BadRequestException('Update data is required');
 		}
 
+		// Prevent updating sensitive fields via NoSQL injection
+		const disallowedFields = ['password', 'roles', 'isActive', '__v'];
+		const payloadKeys = Object.keys(payload);
+		const hasDangerousFields = payloadKeys.some((key) => disallowedFields.includes(key) || key.startsWith('$'));
+
+		if (hasDangerousFields) {
+			this.logger.warn('Attempt to update protected fields', {
+				queryFields: Object.keys(sanitizedQuery),
+				attemptedFields: payloadKeys,
+				service: 'UserService',
+				method: 'findOneAndUpdate',
+			});
+			throw new BadRequestException('Cannot update protected fields');
+		}
+
 		try {
-			const updatedUser = await this.userModel.findOneAndUpdate(query, payload, { new: true });
+			const updatedUser = await this.userModel.findOneAndUpdate(sanitizedQuery, payload, { new: true });
 
 			if (!updatedUser) {
 				this.logger.warn('User not found for update', {
@@ -289,24 +315,26 @@ export class UserService {
 		}
 	}
 
-	public async findOneAndDelete(query: any): Promise<User> {
+	public async findOneAndDelete(query: { email: string } | { _id: string }): Promise<User> {
+		// Sanitize query to prevent NoSQL injection - only allow email or _id
+		let sanitizedQuery: { email?: string; _id?: string } = {};
+
+		if ('email' in query && typeof query.email === 'string') {
+			sanitizedQuery.email = query.email;
+		} else if ('_id' in query && typeof query._id === 'string') {
+			sanitizedQuery._id = query._id;
+		} else {
+			throw new BadRequestException('Valid email or _id is required for user deletion');
+		}
+
 		this.logger.log('Deleting user', {
-			queryFields: Object.keys(query),
+			queryFields: Object.keys(sanitizedQuery),
 			service: 'UserService',
 			method: 'findOneAndDelete',
 		});
 
-		// Validate query
-		if (!query || Object.keys(query).length === 0) {
-			this.logger.warn('Empty query provided for user deletion', {
-				service: 'UserService',
-				method: 'findOneAndDelete',
-			});
-			throw new BadRequestException('Query is required for user deletion');
-		}
-
 		try {
-			const deletedUser = await this.userModel.findOneAndDelete(query);
+			const deletedUser = await this.userModel.findOneAndDelete(sanitizedQuery);
 
 			if (!deletedUser) {
 				this.logger.warn('User not found for deletion', {

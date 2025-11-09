@@ -18,6 +18,23 @@ export class CustomLoggerService implements LoggerService {
 	private static asyncLocalStorage = new AsyncLocalStorage<LogContext>();
 	private static logLevel: string = process.env.LOG_LEVEL || 'info';
 
+	// Sensitive fields that should be redacted from logs
+	private static readonly SENSITIVE_FIELDS = [
+		'password',
+		'token',
+		'accessToken',
+		'access_token',
+		'refreshToken',
+		'refresh_token',
+		'secret',
+		'authorization',
+		'apiKey',
+		'api_key',
+		'creditCard',
+		'ssn',
+		'cvv',
+	];
+
 	setContext(context: string) {
 		this.context = context;
 	}
@@ -55,6 +72,47 @@ export class CustomLoggerService implements LoggerService {
 		return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 	}
 
+	/**
+	 * Recursively sanitize an object by redacting sensitive fields
+	 */
+	private sanitizeData(data: any): any {
+		if (data === null || data === undefined) {
+			return data;
+		}
+
+		// Handle primitives
+		if (typeof data !== 'object') {
+			return data;
+		}
+
+		// Handle arrays
+		if (Array.isArray(data)) {
+			return data.map((item) => this.sanitizeData(item));
+		}
+
+		// Handle objects
+		const sanitized: any = {};
+		for (const [key, value] of Object.entries(data)) {
+			const lowerKey = key.toLowerCase();
+
+			// Check if this field should be redacted
+			const isSensitive = CustomLoggerService.SENSITIVE_FIELDS.some((field) =>
+				lowerKey.includes(field.toLowerCase()),
+			);
+
+			if (isSensitive) {
+				sanitized[key] = '[REDACTED]';
+			} else if (typeof value === 'object' && value !== null) {
+				// Recursively sanitize nested objects
+				sanitized[key] = this.sanitizeData(value);
+			} else {
+				sanitized[key] = value;
+			}
+		}
+
+		return sanitized;
+	}
+
 	private formatMessage(level: string, message: any, optionalParams?: any[]): string {
 		const context = CustomLoggerService.getContext();
 		const timestamp = new Date().toISOString();
@@ -85,7 +143,10 @@ export class CustomLoggerService implements LoggerService {
 			logEntry['additionalData'] = optionalParams;
 		}
 
-		return JSON.stringify(logEntry);
+		// Sanitize the entire log entry to remove sensitive data
+		const sanitizedEntry = this.sanitizeData(logEntry);
+
+		return JSON.stringify(sanitizedEntry);
 	}
 
 	log(message: any, ...optionalParams: any[]) {
