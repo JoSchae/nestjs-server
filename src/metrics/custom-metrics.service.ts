@@ -32,6 +32,11 @@ export class CustomMetricsService {
 	private readonly cacheMisses: Counter<string>;
 	private readonly cacheSize: Gauge<string>;
 
+	// Telemetry Metrics
+	private readonly telemetryEventsTotal: Counter<string>;
+	private readonly telemetryBatchesTotal: Counter<string>;
+	private readonly telemetryEventsStoredTotal: Gauge<string>;
+
 	constructor() {
 		this.logger.setContext(CustomMetricsService.name);
 
@@ -139,6 +144,25 @@ export class CustomMetricsService {
 			labelNames: ['cache_name'],
 		});
 
+		// Telemetry Metrics
+		this.telemetryEventsTotal = new Counter({
+			name: 'telemetry_events_total',
+			help: 'Total number of telemetry events received',
+			labelNames: ['company_id', 'event_type', 'app_name'],
+		});
+
+		this.telemetryBatchesTotal = new Counter({
+			name: 'telemetry_batches_total',
+			help: 'Total number of telemetry batch requests',
+			labelNames: ['company_id'],
+		});
+
+		this.telemetryEventsStoredTotal = new Gauge({
+			name: 'telemetry_events_stored_total',
+			help: 'Total number of telemetry events currently stored in database',
+			labelNames: ['company_id', 'event_type'],
+		});
+
 		// Register all metrics
 		register.registerMetric(this.httpRequestsTotal);
 		register.registerMetric(this.httpRequestDuration);
@@ -156,9 +180,12 @@ export class CustomMetricsService {
 		register.registerMetric(this.cacheHits);
 		register.registerMetric(this.cacheMisses);
 		register.registerMetric(this.cacheSize);
+		register.registerMetric(this.telemetryEventsTotal);
+		register.registerMetric(this.telemetryBatchesTotal);
+		register.registerMetric(this.telemetryEventsStoredTotal);
 
 		this.logger.log('Custom metrics initialized successfully', {
-			metricsCount: 16,
+			metricsCount: 19,
 			metrics: [
 				'http_requests_total',
 				'http_request_duration_seconds',
@@ -176,6 +203,9 @@ export class CustomMetricsService {
 				'cache_hits_total',
 				'cache_misses_total',
 				'cache_size_bytes',
+				'telemetry_events_total',
+				'telemetry_batches_total',
+				'telemetry_events_stored_total',
 			],
 			service: 'CustomMetricsService',
 			method: 'constructor',
@@ -264,5 +294,28 @@ export class CustomMetricsService {
 
 	setCacheSize(cacheName: string, sizeBytes: number) {
 		this.cacheSize.set({ cache_name: cacheName }, sizeBytes);
+	}
+
+	// Telemetry Metrics Methods
+	recordTelemetryEvent(companyId: string, eventType: string, appName: string) {
+		this.telemetryEventsTotal.inc({
+			company_id: companyId,
+			event_type: eventType,
+			app_name: appName,
+		});
+	}
+
+	recordTelemetryBatch(companyId: string, eventCount: number) {
+		this.telemetryBatchesTotal.inc({ company_id: companyId }, eventCount);
+	}
+
+	setStoredTelemetryEvents(companyId: string, eventType: string, count: number) {
+		this.telemetryEventsStoredTotal.set(
+			{
+				company_id: companyId,
+				event_type: eventType,
+			},
+			count,
+		);
 	}
 }

@@ -5,13 +5,17 @@ import { TelemetryService } from './telemetry.service';
 import { TelemetryEventDto } from './dto/telemetry-event.dto';
 import { BatchTelemetryDto } from './dto/batch-telemetry.dto';
 import { CustomLoggerService } from 'src/shared/logger/custom-logger.service';
+import { CustomMetricsService } from 'src/metrics/custom-metrics.service';
 
 @ApiTags('Telemetry')
 @Controller('telemetry')
 export class TelemetryController {
 	private readonly logger = new CustomLoggerService();
 
-	constructor(private readonly telemetryService: TelemetryService) {
+	constructor(
+		private readonly telemetryService: TelemetryService,
+		private readonly metricsService: CustomMetricsService,
+	) {
 		this.logger.setContext(TelemetryController.name);
 	}
 
@@ -30,6 +34,14 @@ export class TelemetryController {
 			appName: eventDto.appName,
 			userId: eventDto.userId,
 		});
+
+		// Record Prometheus metric
+		this.metricsService.recordTelemetryEvent(
+			eventDto.userId, // nestjs-server uses userId instead of companyId
+			eventDto.eventType,
+			eventDto.appName,
+		);
+
 		const event = await this.telemetryService.createEvent(eventDto);
 		return {
 			success: true,
@@ -48,6 +60,12 @@ export class TelemetryController {
 	@ApiResponse({ status: 429, description: 'Too many requests - rate limit exceeded' })
 	async createBatch(@Body() batchDto: BatchTelemetryDto) {
 		this.logger.log(`Received telemetry batch: ${batchDto.events.length} events`);
+
+		// Record Prometheus metric - use first event's userId for batch metric
+		if (batchDto.events.length > 0) {
+			this.metricsService.recordTelemetryBatch(batchDto.events[0].userId, batchDto.events.length);
+		}
+
 		const result = await this.telemetryService.createBatch(batchDto.events);
 		return {
 			success: true,
