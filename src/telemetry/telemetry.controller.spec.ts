@@ -1,8 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TelemetryController } from './telemetry.controller';
 import { TelemetryService } from './telemetry.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { TelemetryThrottlerGuard } from './guards/telemetry-throttler.guard';
 
 describe('TelemetryController', () => {
 	let controller: TelemetryController;
@@ -15,14 +13,6 @@ describe('TelemetryController', () => {
 		getStatistics: jest.fn(),
 	};
 
-	const mockJwtAuthGuard = {
-		canActivate: jest.fn(() => true),
-	};
-
-	const mockThrottlerGuard = {
-		canActivate: jest.fn(() => true),
-	};
-
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [TelemetryController],
@@ -32,12 +22,7 @@ describe('TelemetryController', () => {
 					useValue: mockTelemetryService,
 				},
 			],
-		})
-			.overrideGuard(JwtAuthGuard)
-			.useValue(mockJwtAuthGuard)
-			.overrideGuard(TelemetryThrottlerGuard)
-			.useValue(mockThrottlerGuard)
-			.compile();
+		}).compile();
 
 		controller = module.get<TelemetryController>(TelemetryController);
 		service = module.get<TelemetryService>(TelemetryService);

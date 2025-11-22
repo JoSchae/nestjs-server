@@ -25,7 +25,11 @@ export class TelemetryController {
 	@ApiResponse({ status: 401, description: 'Unauthorized - valid JWT required' })
 	@ApiResponse({ status: 429, description: 'Too many requests - rate limit exceeded' })
 	async createEvent(@Body() eventDto: TelemetryEventDto) {
-		this.logger.debug(`Received telemetry event: ${eventDto.eventType}`);
+		this.logger.log('Received telemetry event', {
+			eventType: eventDto.eventType,
+			appName: eventDto.appName,
+			userId: eventDto.userId,
+		});
 		const event = await this.telemetryService.createEvent(eventDto);
 		return {
 			success: true,
