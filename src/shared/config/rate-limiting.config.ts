@@ -22,4 +22,8 @@ export default registerAs('rateLimit', () => ({
 		ttl: parseInt(process.env.HEALTH_RATE_LIMIT_TTL) || 60000, // 1 minute
 		limit: parseInt(process.env.HEALTH_RATE_LIMIT_MAX) || 30, // 30 requests per minute (allow monitoring systems)
 	},
+	telemetry: {
+		ttl: parseInt(process.env.TELEMETRY_RATE_LIMIT_TTL) || 60000, // 1 minute
+		limit: parseInt(process.env.TELEMETRY_RATE_LIMIT_MAX) || 100, // 100 requests per minute per company
+	},
 }));

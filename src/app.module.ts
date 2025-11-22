@@ -11,6 +11,7 @@ import { RoleModule } from './role/role.module';
 import { PermissionModule } from './permission/permission.module';
 import { SeedModule } from './seed/seed.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { TelemetryModule } from './telemetry/telemetry.module';
 import { LoggerModule } from './shared/logger/logger.module';
 import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -69,6 +70,7 @@ import { CacheModule } from './shared/cache/cache.module';
 		PermissionModule,
 		SeedModule,
 		MetricsModule,
+		TelemetryModule,
 		LoggerModule,
 	],
 	controllers: [AppController],
